@@ -18,7 +18,12 @@ const createOrderSchema = z.object({
     theme: z.string().trim().max(40).optional(),
     notes: z.string().trim().max(1000).optional(),
   }).strict().default({}),
-  preferredDate: z.coerce.date().min(new Date(Date.now() - 24 * 3600 * 1000)).optional(),
+  preferredDate: z.coerce
+    .date()
+    .refine((d) => d >= new Date(Date.now() - 24 * 3600 * 1000), {
+      message: 'Preferred date cannot be in the past',
+    })
+    .optional(),
 }).strict(); // rejects unknown fields such as user, status, role, price
 
 const ORDER_ID = /^FC-[0-9A-F]{8}$/;

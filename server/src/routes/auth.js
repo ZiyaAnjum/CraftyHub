@@ -5,7 +5,7 @@ import { User } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { validateBody } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
-import { authLimiter } from '../middleware/rateLimiters.js';
+import { authLimiter, refreshLimiter } from '../middleware/rateLimiters.js';
 import {
   signAccessToken, newRefreshToken, hashToken, setAuthCookies, clearAuthCookies, REFRESH_TTL_MS,
 } from '../utils/tokens.js';
@@ -64,11 +64,12 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req, res, n
   try {
     const { email, password: pw } = req.body;
     const user = await User.findOne({ email }).select('+passwordHash');
-    const ok = await bcrypt.compare(pw, user?.passwordHash ?? DUMMY_HASH);
 
     if (user?.lockUntil && user.lockUntil > new Date()) {
       return res.status(429).json({ error: 'Too many failed attempts. Please try again in 15 minutes.' });
     }
+
+    const ok = await bcrypt.compare(pw, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !ok) {
       if (user) {
         const updated = await User.findByIdAndUpdate(user._id, { $inc: { failedLoginCount: 1 } }, { new: true });
@@ -86,28 +87,37 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req, res, n
 });
 
 // Rotating refresh tokens with reuse detection
-router.post('/refresh', authLimiter, async (req, res, next) => {
+router.post('/refresh', refreshLimiter, async (req, res, next) => {
   try {
     const raw = req.cookies?.fc_rt;
     if (!raw) return res.status(401).json({ error: 'Please sign in.' });
 
-    const record = await RefreshToken.findOne({ tokenHash: hashToken(raw) });
-    if (!record || record.expiresAt < new Date()) {
+    const tokenHash = hashToken(raw);
+    const record = await RefreshToken.findOneAndUpdate(
+      { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
+      { $set: { revokedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!record) {
+      const revokedRecord = await RefreshToken.findOne({ tokenHash });
+      if (revokedRecord?.revokedAt) {
+        const age = Date.now() - revokedRecord.revokedAt.getTime();
+        if (age < 10_000) {
+          return res.status(401).json({ error: 'Please retry.' });
+        }
+        // A used token came back: possible theft. Revoke every session for this user.
+        await RefreshToken.updateMany({ user: revokedRecord.user, revokedAt: null }, { $set: { revokedAt: new Date() } });
+        clearAuthCookies(res);
+        return res.status(401).json({ error: 'Please sign in again.' });
+      }
       clearAuthCookies(res);
       return res.status(401).json({ error: 'Please sign in.' });
-    }
-    if (record.revokedAt) {
-      // A used token came back: possible theft. Revoke every session for this user.
-      await RefreshToken.updateMany({ user: record.user, revokedAt: null }, { $set: { revokedAt: new Date() } });
-      clearAuthCookies(res);
-      return res.status(401).json({ error: 'Please sign in again.' });
     }
 
     const user = await User.findById(record.user);
     if (!user) { clearAuthCookies(res); return res.status(401).json({ error: 'Please sign in.' }); }
 
-    record.revokedAt = new Date();
-    await record.save();
     await startSession(res, user);
     res.json({ user: publicUser(user) });
   } catch (e) { next(e); }
