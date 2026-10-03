@@ -91,6 +91,27 @@ export function AccountPage() {
           </div>
         </div>
 
+        {/* Admin Quick Links */}
+        {user.role === 'admin' && (
+          <div className="pt-2">
+            <Link
+              to="/admin/gifts"
+              className="p-4 rounded-2xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100/60 transition-all flex items-center justify-between group tap-target shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-purple-950 block">Manage Gift Catalog</span>
+                  <span className="text-xs text-purple-700">Add, edit, publish & manage gift items</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-purple-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all" />
+            </Link>
+          </div>
+        )}
+
         {/* Quick Links */}
         <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link

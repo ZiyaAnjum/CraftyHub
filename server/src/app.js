@@ -11,6 +11,7 @@ import { notFound, errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.js';
 import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
+import giftRoutes from './routes/gifts.js';
 
 const app = express();
 
@@ -24,7 +25,7 @@ app.use(helmet({
 app.use(cors({
   origin: (origin, cb) => (!origin || origin === env.CLIENT_ORIGIN ? cb(null, true) : cb(new Error('Not allowed by CORS'))),
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'X-Requested-With'],
 }));
 app.use(express.json({ limit: '10kb' }));
@@ -35,6 +36,7 @@ app.use(hpp());
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api', globalLimiter, requireCsrfHeader);
 app.use('/api/auth', authRoutes);
+app.use('/api/gifts', giftRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 

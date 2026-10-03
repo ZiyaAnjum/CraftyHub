@@ -27,14 +27,27 @@ export function CreatePage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [placedOrder, setPlacedOrder] = useState(null);
 
-  // If URL has ?occasion=..., prioritize it
+  // If URL has ?occasion=... or ?title=..., prioritize it
   useEffect(() => {
     const urlOccasion = searchParams.get('occasion');
+    const urlTitle = searchParams.get('title');
+    const patch = {};
     if (urlOccasion) {
       setOccasion(urlOccasion);
-      updateDraft({ occasion: urlOccasion });
+      patch.occasion = urlOccasion;
     }
-  }, [searchParams, updateDraft]);
+    if (urlTitle) {
+      patch.items = [{ name: urlTitle, qty: 1 }];
+      const notesText = `Customizing: ${urlTitle}`;
+      setNotes((prev) => prev || notesText);
+      if (!notes) {
+        patch.customization = { notes: notesText };
+      }
+    }
+    if (Object.keys(patch).length > 0) {
+      updateDraft(patch);
+    }
+  }, [searchParams, updateDraft, notes]);
 
   // Keep draft in sync with inputs
   const handleFieldChange = (setter, field, value) => {
@@ -129,10 +142,11 @@ export function CreatePage() {
         }
       }
 
+      const itemName = draft.items?.[0]?.name || `${trimmedOccasion} Bespoke Creation`;
       const orderPayload = {
         occasion: trimmedOccasion,
         budget: safeBudget,
-        items: [{ name: `${trimmedOccasion} Bespoke Creation`.slice(0, 120), qty: 1 }],
+        items: [{ name: itemName.slice(0, 120), qty: 1 }],
         customization,
         ...(safePreferredDate ? { preferredDate: safePreferredDate } : {}),
       };
@@ -436,6 +450,13 @@ export function CreatePage() {
             </div>
 
             <div className="mt-4 space-y-3.5 text-sm">
+              {draft.items?.[0]?.name && draft.items[0].name !== 'Customized Gift Box' && (
+                <div>
+                  <span className="text-xs text-stone-400 block">Selected Gift Base</span>
+                  <span className="font-serif font-bold text-blush-700 text-sm">{draft.items[0].name}</span>
+                </div>
+              )}
+
               <div>
                 <span className="text-xs text-stone-400 block">Occasion</span>
                 <span className="font-serif font-bold text-stone-900 text-base">{occasion}</span>

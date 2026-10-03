@@ -1,7 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Sparkles, Heart, Gift, Cake, Calendar, ChevronRight, Award, ShieldCheck, Smile } from 'lucide-react';
+import {
+  Sparkles,
+  Heart,
+  Gift,
+  Cake,
+  Calendar,
+  ChevronRight,
+  Award,
+  ShieldCheck,
+  Smile,
+  Package,
+  ArrowRight,
+  Image as ImageIcon
+} from 'lucide-react';
+import { api } from '../lib/api';
+import { GiftCard } from '../components/GiftCard';
+import { GiftCardSkeleton } from '../components/Skeleton';
 
 const OCCASIONS = [
   {
@@ -42,8 +58,73 @@ const OCCASIONS = [
   },
 ];
 
+const SHOP_CATEGORIES = [
+  {
+    category: 'Hamper',
+    title: 'Luxury Hampers',
+    subtitle: 'Curated gift boxes with artisanal treats & candles',
+    icon: Package,
+    gradient: 'from-amber-50 to-orange-50 border-amber-200/70',
+    accent: 'text-amber-700 bg-amber-100/80',
+  },
+  {
+    category: 'Bouquet',
+    title: 'Handcrafted Bouquets',
+    subtitle: 'Everlasting floral arrangements & satin ribbons',
+    icon: Sparkles,
+    gradient: 'from-rose-50 to-pink-50 border-pink-200/70',
+    accent: 'text-rose-700 bg-rose-100/80',
+  },
+  {
+    category: 'Frame',
+    title: 'Memory Frames',
+    subtitle: 'Custom wooden, acrylic & LED backlit portraits',
+    icon: ImageIcon,
+    gradient: 'from-indigo-50 to-blue-50 border-indigo-200/70',
+    accent: 'text-indigo-700 bg-indigo-100/80',
+  },
+  {
+    category: 'Engraved',
+    title: 'Engraved Plaques',
+    subtitle: 'Laser-etched keepsake clocks & desk decor',
+    icon: Award,
+    gradient: 'from-emerald-50 to-teal-50 border-emerald-200/70',
+    accent: 'text-emerald-700 bg-emerald-100/80',
+  },
+  {
+    category: 'Other',
+    title: 'Bespoke Creations',
+    subtitle: 'Personalized tokens and celebration favors',
+    icon: Gift,
+    gradient: 'from-purple-50 to-fuchsia-50 border-purple-200/70',
+    accent: 'text-purple-700 bg-purple-100/80',
+  },
+];
+
 export function HomePage() {
   const shouldReduceMotion = useReducedMotion();
+  const [featuredGifts, setFeaturedGifts] = useState([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadFeatured() {
+      try {
+        const res = await api.get('/api/gifts/featured');
+        if (isMounted) {
+          setFeaturedGifts(res.gifts || []);
+        }
+      } catch {
+        // fail silently for home page featured
+      } finally {
+        if (isMounted) setLoadingFeatured(false);
+      }
+    }
+    loadFeatured();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -65,10 +146,9 @@ export function HomePage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-12 sm:space-y-16">
-      {/* Hero Section */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-14 sm:space-y-20">
+      {/* 1. Hero Section */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blush-50 via-cream-100 to-gold-50/70 border border-blush-200/60 p-6 sm:p-12 shadow-soft text-center sm:text-left">
-        {/* Subtle decorative elements */}
         <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blush-200/40 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full bg-gold-200/30 blur-2xl pointer-events-none" />
 
@@ -128,14 +208,111 @@ export function HomePage() {
               to="/explore"
               className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/90 hover:bg-white text-stone-700 font-medium text-base border border-stone-200 shadow-soft transition-all active:scale-95 flex items-center justify-center gap-2 tap-target"
             >
-              <span>Explore Gallery</span>
+              <span>Explore Catalog</span>
               <ChevronRight className="w-4 h-4 text-stone-400" />
             </Link>
           </motion.div>
         </div>
       </section>
 
-      {/* Occasion Categories */}
+      {/* 2. Featured Gifts Grid */}
+      <section className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-gold-600 font-semibold mb-1">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Handpicked Creations</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
+              Featured Gifts
+            </h2>
+          </div>
+
+          <Link
+            to="/explore"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-blush-600 hover:text-blush-700 transition-colors group"
+          >
+            <span>View All Gifts</span>
+            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+
+        {loadingFeatured ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <GiftCardSkeleton />
+            <GiftCardSkeleton />
+            <GiftCardSkeleton />
+          </div>
+        ) : featuredGifts.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-white border border-stone-200/80 text-center text-sm text-stone-500">
+            Check out our{' '}
+            <Link to="/explore" className="text-blush-600 font-semibold underline">
+              full catalog
+            </Link>{' '}
+            for all handcrafted designs.
+          </div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-20px' }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {featuredGifts.map((gift) => (
+              <motion.div key={gift._id} variants={itemVariants}>
+                <GiftCard gift={gift} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </section>
+
+      {/* 3. Shop by Category Tiles */}
+      <section className="space-y-6">
+        <div>
+          <span className="text-xs uppercase tracking-widest text-gold-600 font-semibold block mb-1">
+            Browse By Craft
+          </span>
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
+            Shop by Category
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {SHOP_CATEGORIES.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.category}
+                to={`/explore?category=${item.category}`}
+                className={`group p-5 rounded-2xl bg-gradient-to-br ${item.gradient} border shadow-soft hover:shadow-elevated transition-all flex flex-col justify-between`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <h3 className="font-serif text-lg font-bold text-stone-900 group-hover:text-blush-600 transition-colors">
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      {item.subtitle}
+                    </p>
+                  </div>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.accent} shadow-xs`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-stone-200/50 flex items-center justify-between text-xs font-semibold text-stone-700 group-hover:text-blush-600 transition-colors">
+                  <span>Explore category</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 4. Occasion Categories (Existing) */}
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
@@ -200,7 +377,7 @@ export function HomePage() {
         </motion.div>
       </section>
 
-      {/* Trust & Quality Features */}
+      {/* 5. Trust & Quality Features (Existing) */}
       <section className="bg-white/80 border border-blush-100 rounded-3xl p-6 sm:p-8 shadow-soft">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-4">

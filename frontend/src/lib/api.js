@@ -80,22 +80,29 @@ export async function apiFetch(endpoint, options = {}, isRetry = false) {
     endpoint.includes('/api/auth/refresh') ||
     endpoint.includes('/api/auth/logout');
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
   const headers = {
     'X-Requested-With': 'fouzas-web',
-    ...(options.body && typeof options.body === 'object' && !(options.body instanceof FormData)
+    ...(!isFormData && options.body && typeof options.body === 'object'
       ? { 'Content-Type': 'application/json' }
       : {}),
     ...options.headers,
   };
 
+  if (isFormData && headers['Content-Type']) {
+    delete headers['Content-Type'];
+  }
+
   const config = {
     ...options,
     headers,
     credentials: 'include',
-    body:
-      options.body && typeof options.body === 'object' && !(options.body instanceof FormData)
-        ? JSON.stringify(options.body)
-        : options.body,
+    body: isFormData
+      ? options.body
+      : options.body && typeof options.body === 'object'
+      ? JSON.stringify(options.body)
+      : options.body,
   };
 
   let response;
@@ -158,6 +165,7 @@ export async function apiFetch(endpoint, options = {}, isRetry = false) {
 export const api = {
   get: (url, options = {}) => apiFetch(url, { ...options, method: 'GET' }),
   post: (url, body, options = {}) => apiFetch(url, { ...options, method: 'POST', body }),
+  put: (url, body, options = {}) => apiFetch(url, { ...options, method: 'PUT', body }),
   patch: (url, body, options = {}) => apiFetch(url, { ...options, method: 'PATCH', body }),
   delete: (url, options = {}) => apiFetch(url, { ...options, method: 'DELETE' }),
 };

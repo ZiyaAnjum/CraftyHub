@@ -9,6 +9,8 @@ import { OrdersPage } from './pages/OrdersPage';
 import { AccountPage } from './pages/AccountPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
+import { GiftDetailPage } from './pages/GiftDetailPage';
+import { AdminGiftsPage } from './pages/AdminGiftsPage';
 
 export default function App() {
   return (
@@ -17,6 +19,7 @@ export default function App() {
         {/* Public Routes */}
         <Route index element={<HomePage />} />
         <Route path="explore" element={<ExplorePage />} />
+        <Route path="gifts/:slug" element={<GiftDetailPage />} />
         <Route path="create" element={<CreatePage />} />
         <Route path="signin" element={<SignInPage />} />
         <Route path="signup" element={<SignUpPage />} />
@@ -25,6 +28,7 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route path="orders" element={<OrdersPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="admin/gifts" element={<AdminGiftsPage />} />
         </Route>
 
         {/* Catch-all Route */}

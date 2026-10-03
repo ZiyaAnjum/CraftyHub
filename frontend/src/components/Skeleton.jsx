@@ -26,3 +26,23 @@ export function OrderCardSkeleton() {
     </div>
   );
 }
+
+export function GiftCardSkeleton() {
+  return (
+    <div className="bg-white rounded-3xl border border-stone-200/80 overflow-hidden shadow-soft flex flex-col justify-between">
+      <div>
+        <Skeleton className="aspect-[4/3] w-full rounded-none" />
+        <div className="p-5 space-y-3">
+          <Skeleton className="h-5 w-3/4 rounded-md" />
+          <Skeleton className="h-3.5 w-full rounded" />
+          <Skeleton className="h-3.5 w-2/3 rounded" />
+        </div>
+      </div>
+      <div className="px-5 pb-5 pt-3 border-t border-stone-100 flex items-center justify-between">
+        <Skeleton className="h-6 w-20 rounded" />
+        <Skeleton className="h-8 w-24 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+

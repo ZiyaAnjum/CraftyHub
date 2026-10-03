@@ -103,6 +103,21 @@ export function Layout() {
               My Orders
             </NavLink>
 
+            {user?.role === 'admin' && (
+              <NavLink
+                to="/admin/gifts"
+                className={({ isActive }) =>
+                  `px-3 py-2 rounded-xl text-sm font-medium transition-all tap-target ${
+                    isActive
+                      ? 'text-purple-700 bg-purple-50 font-semibold shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60'
+                  }`
+                }
+              >
+                Manage Gifts
+              </NavLink>
+            )}
+
             {user ? (
               <NavLink
                 to="/account"
