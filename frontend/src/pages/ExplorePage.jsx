@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Sparkles, Search, X, Gift, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { api } from '../lib/api';
 import { GiftCard } from '../components/GiftCard';
@@ -8,6 +9,7 @@ import { GiftCardSkeleton } from '../components/Skeleton';
 const CATEGORIES = ['All', 'Bouquet', 'Hamper', 'Frame', 'Engraved', 'Other'];
 
 export function ExplorePage() {
+  const shouldReduceMotion = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read initial values from URL query params
@@ -146,20 +148,30 @@ export function ExplorePage() {
 
         {/* Category Filter Chips */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => handleCategorySelect(cat)}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all tap-target ${
-                selectedCategory === cat
-                  ? 'bg-blush-600 text-white shadow-soft ring-2 ring-blush-200'
-                  : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80'
-              }`}
-            >
-              {cat === 'All' ? 'All Gifts' : cat}
-            </button>
-          ))}
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handleCategorySelect(cat)}
+                className={`relative px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors tap-target ${
+                  isSelected
+                    ? 'text-white'
+                    : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80'
+                }`}
+              >
+                {isSelected && (
+                  <motion.div
+                    layoutId={shouldReduceMotion ? undefined : 'activeCategoryPill'}
+                    className="absolute inset-0 bg-blush-600 rounded-xl shadow-soft ring-2 ring-blush-200"
+                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{cat === 'All' ? 'All Gifts' : cat}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -214,11 +226,20 @@ export function ExplorePage() {
       ) : (
         /* Gift Grid */
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div
+            layout={shouldReduceMotion ? false : true}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
             {gifts.map((gift) => (
-              <GiftCard key={gift._id} gift={gift} />
+              <motion.div
+                key={gift._id}
+                layout={shouldReduceMotion ? false : true}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+              >
+                <GiftCard gift={gift} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Pagination */}
           {pagination.pages > 1 && (

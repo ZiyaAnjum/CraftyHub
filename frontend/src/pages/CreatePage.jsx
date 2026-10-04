@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useDraft } from '../hooks/useDraft';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { Gift, Sparkles, CheckCircle2, AlertCircle, ArrowRight, RotateCcw, Clock } from 'lucide-react';
 
 export function CreatePage() {
+  const shouldReduceMotion = useReducedMotion();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -176,9 +178,17 @@ export function CreatePage() {
   if (placedOrder) {
     return (
       <div className="max-w-xl mx-auto px-4 py-12 text-center">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center mb-4">
+        <motion.div
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: -20 }}
+          animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0 }}
+          transition={{
+            duration: 0.45,
+            ease: [0.34, 1.56, 0.64, 1],
+          }}
+          className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center mb-4 shadow-soft"
+        >
           <CheckCircle2 className="w-8 h-8" />
-        </div>
+        </motion.div>
         <h1 className="font-serif text-3xl font-bold text-stone-900">
           Enquiry Received!
         </h1>
@@ -192,18 +202,26 @@ export function CreatePage() {
           We will review your custom notes, theme, and budget. You can track this order in your My Orders dashboard anytime.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            to="/orders"
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blush-600 text-white font-medium text-sm shadow-soft hover:bg-blush-700 transition-colors tap-target"
+          <motion.div
+            whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+            whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+            className="w-full sm:w-auto"
           >
-            Track in My Orders
-          </Link>
-          <button
+            <Link
+              to="/orders"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blush-600 text-white font-medium text-sm shadow-soft hover:bg-blush-700 transition-colors tap-target inline-block"
+            >
+              Track in My Orders
+            </Link>
+          </motion.div>
+          <motion.button
             onClick={() => setPlacedOrder(null)}
+            whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+            whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
             className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white border border-stone-200 text-stone-700 font-medium text-sm hover:bg-stone-50 transition-colors tap-target"
           >
             Create Another Gift
-          </button>
+          </motion.button>
         </div>
       </div>
     );
@@ -231,14 +249,17 @@ export function CreatePage() {
               <CheckCircle2 className="w-3 h-3" /> Draft auto-saved
             </span>
           )}
-          <button
+          <motion.button
             type="button"
             onClick={handleResetDraft}
+            whileHover={shouldReduceMotion ? {} : { scale: 1.03 }}
+            whileTap={shouldReduceMotion ? {} : { scale: 0.97 }}
+            transition={{ duration: 0.2 }}
             className="text-xs text-stone-500 hover:text-stone-800 px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition-colors flex items-center gap-1 tap-target"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Draft</span>
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -419,10 +440,13 @@ export function CreatePage() {
             </div>
           </div>
 
-          <button
+          <motion.button
             type="submit"
             disabled={submitting}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-blush-500 via-blush-600 to-rose-600 hover:from-blush-600 hover:to-rose-700 disabled:opacity-70 text-white font-semibold text-base shadow-elevated transition-all flex items-center justify-center gap-2 tap-target"
+            whileHover={shouldReduceMotion ? {} : { scale: 1.01 }}
+            whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-blush-500 via-blush-600 to-rose-600 hover:from-blush-600 hover:to-rose-700 disabled:opacity-70 text-white font-semibold text-base shadow-elevated transition-colors flex items-center justify-center gap-2 tap-target"
           >
             {submitting ? (
               <span className="flex items-center gap-2">
@@ -436,7 +460,7 @@ export function CreatePage() {
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
-          </button>
+          </motion.button>
         </form>
 
         {/* Live Draft Preview Card (1 Column) */}

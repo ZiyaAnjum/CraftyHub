@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Sparkles,
   ArrowLeft,
@@ -18,6 +18,7 @@ import { api, ApiError } from '../lib/api';
 import { Skeleton } from '../components/Skeleton';
 
 export function GiftDetailPage() {
+  const shouldReduceMotion = useReducedMotion();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [gift, setGift] = useState(null);
@@ -148,7 +149,7 @@ export function GiftDetailPage() {
   const customizeUrl = `/create?title=${encodeURIComponent(gift.title)}&occasion=${encodeURIComponent(primaryOccasion)}`;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 pb-32 md:pb-10">
       {/* Breadcrumb / Back button */}
       <div className="flex items-center gap-2 text-xs font-medium text-stone-500">
         <Link
@@ -173,8 +174,8 @@ export function GiftDetailPage() {
                 key={activeImage.url}
                 src={activeImage.url}
                 alt={gift.title}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
                 className="w-full h-full object-cover object-center"
@@ -198,10 +199,11 @@ export function GiftDetailPage() {
           {images.length > 1 && (
             <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
               {images.map((img, idx) => (
-                <button
+                <motion.button
                   key={idx}
                   type="button"
                   onClick={() => setActiveImageIndex(idx)}
+                  whileTap={shouldReduceMotion ? {} : { scale: 0.95 }}
                   className={`relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 border-2 transition-all tap-target ${
                     activeImageIndex === idx
                       ? 'border-blush-500 ring-2 ring-blush-200 scale-102'
@@ -213,7 +215,7 @@ export function GiftDetailPage() {
                     alt={`${gift.title} thumbnail ${idx + 1}`}
                     className="w-full h-full object-cover object-center"
                   />
-                </button>
+                </motion.button>
               ))}
             </div>
           )}
@@ -349,6 +351,32 @@ export function GiftDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Sticky bottom "Customize this gift" bar on mobile only */}
+      <motion.div
+        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="md:hidden fixed bottom-14 left-0 right-0 z-40 p-3 bg-white/95 backdrop-blur-md border-t border-blush-100 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]"
+      >
+        <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-stone-400 block font-medium">
+              {gift.priceNote || 'Starts from'}
+            </span>
+            <span className="font-serif font-bold text-stone-900 text-base">
+              ₹{Number(gift.price).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <Link
+            to={customizeUrl}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blush-500 to-rose-600 text-white text-xs font-semibold shadow-soft flex items-center justify-center gap-1.5 active:scale-98 transition-transform"
+          >
+            <Gift className="w-4 h-4 text-gold-200" />
+            <span>Customize this gift</span>
+          </Link>
+        </div>
+      </motion.div>
     </div>
   );
 }

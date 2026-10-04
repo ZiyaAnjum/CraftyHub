@@ -16,6 +16,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { stagger, fadeUp } from '../lib/motion';
 import { GiftCard } from '../components/GiftCard';
 import { GiftCardSkeleton } from '../components/Skeleton';
 
@@ -126,37 +127,70 @@ export function HomePage() {
     };
   }, []);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: shouldReduceMotion ? 0 : 0.08,
-      },
-    },
-  };
+  const containerVariants = shouldReduceMotion
+    ? {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 },
+      }
+    : stagger;
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: shouldReduceMotion ? 0 : 16 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.35, ease: 'easeOut' },
-    },
-  };
+  const itemVariants = shouldReduceMotion
+    ? {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1 },
+      }
+    : fadeUp;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-14 sm:space-y-20">
       {/* 1. Hero Section */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blush-50 via-cream-100 to-gold-50/70 border border-blush-200/60 p-6 sm:p-12 shadow-soft text-center sm:text-left">
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blush-200/40 blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full bg-gold-200/30 blur-2xl pointer-events-none" />
+        {/* Softly floating background shapes (3 max, transform only) */}
+        <motion.div
+          className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blush-200/40 blur-2xl pointer-events-none"
+          animate={shouldReduceMotion ? {} : {
+            x: [0, 15, -10, 0],
+            y: [0, -15, 10, 0],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+        <motion.div
+          className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full bg-gold-200/30 blur-2xl pointer-events-none"
+          animate={shouldReduceMotion ? {} : {
+            x: [0, -12, 14, 0],
+            y: [0, 14, -12, 0],
+          }}
+          transition={{
+            duration: 9,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+        <motion.div
+          className="absolute top-1/2 -right-8 w-36 h-36 rounded-full bg-rose-200/25 blur-2xl pointer-events-none"
+          animate={shouldReduceMotion ? {} : {
+            x: [0, -10, 8, 0],
+            y: [0, 10, -10, 0],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
 
-        <div className="relative z-10 max-w-2xl">
+        <motion.div
+          className="relative z-10 max-w-2xl"
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
+            variants={itemVariants}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-blush-200 text-blush-700 text-xs sm:text-sm font-medium mb-4 shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-gold-500" />
@@ -164,36 +198,28 @@ export function HomePage() {
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.05 }}
+            variants={itemVariants}
             className="font-serif text-3xl sm:text-5xl lg:text-6xl font-bold text-stone-900 tracking-tight leading-[1.15]"
           >
             Fouzas Creation
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.1 }}
+            variants={itemVariants}
             className="mt-3 text-lg sm:text-2xl text-stone-600 font-serif italic"
           >
             Made for your special moments
           </motion.p>
 
           <motion.p
-            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.15 }}
+            variants={itemVariants}
             className="mt-4 text-stone-600 text-sm sm:text-base leading-relaxed max-w-xl"
           >
             Bespoke gift hampers, handcrafted bouquets, personalized memory frames, and artisanal creations crafted exclusively for the people you cherish most.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.2 }}
+            variants={itemVariants}
             className="mt-8 flex flex-col sm:flex-row items-center gap-3 sm:gap-4"
           >
             <Link
@@ -212,7 +238,7 @@ export function HomePage() {
               <ChevronRight className="w-4 h-4 text-stone-400" />
             </Link>
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
       {/* 2. Featured Gifts Grid */}
@@ -279,37 +305,48 @@ export function HomePage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-20px' }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {SHOP_CATEGORIES.map((item) => {
             const Icon = item.icon;
             return (
-              <Link
+              <motion.div
                 key={item.category}
-                to={`/explore?category=${item.category}`}
-                className={`group p-5 rounded-2xl bg-gradient-to-br ${item.gradient} border shadow-soft hover:shadow-elevated transition-all flex flex-col justify-between`}
+                variants={itemVariants}
+                whileHover={shouldReduceMotion ? {} : { y: -4, transition: { duration: 0.2 } }}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <h3 className="font-serif text-lg font-bold text-stone-900 group-hover:text-blush-600 transition-colors">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-stone-600 leading-relaxed">
-                      {item.subtitle}
-                    </p>
+                <Link
+                  to={`/explore?category=${item.category}`}
+                  className={`group p-5 rounded-2xl bg-gradient-to-br ${item.gradient} border shadow-soft hover:shadow-elevated transition-all flex flex-col justify-between h-full`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <h3 className="font-serif text-lg font-bold text-stone-900 group-hover:text-blush-600 transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-stone-600 leading-relaxed">
+                        {item.subtitle}
+                      </p>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.accent} shadow-xs`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
                   </div>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.accent} shadow-xs`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                </div>
 
-                <div className="mt-4 pt-3 border-t border-stone-200/50 flex items-center justify-between text-xs font-semibold text-stone-700 group-hover:text-blush-600 transition-colors">
-                  <span>Explore category</span>
-                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
+                  <div className="mt-4 pt-3 border-t border-stone-200/50 flex items-center justify-between text-xs font-semibold text-stone-700 group-hover:text-blush-600 transition-colors">
+                    <span>Explore category</span>
+                    <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Link>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </section>
 
       {/* 4. Occasion Categories (Existing) */}

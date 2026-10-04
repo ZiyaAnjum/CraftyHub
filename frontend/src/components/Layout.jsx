@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useMotionValueEvent, useReducedMotion } from 'framer-motion';
+import { pageTransition } from '../lib/motion';
 import { Home, Compass, Gift, Package, User, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,6 +9,35 @@ export function Layout() {
   const { user } = useAuth();
   const location = useLocation();
   const shouldReduceMotion = useReducedMotion();
+
+  const { scrollY } = useScroll();
+  const [navHidden, setNavHidden] = useState(false);
+  const lastYRef = useRef(0);
+
+  useMotionValueEvent(scrollY, 'change', (latest) => {
+    const previous = lastYRef.current;
+    const hidden = latest > previous && latest > 80;
+    setNavHidden(hidden);
+    lastYRef.current = latest;
+  });
+
+  const headerVariants = shouldReduceMotion
+    ? {
+        visible: { opacity: 1 },
+        hidden: { opacity: 0 },
+      }
+    : {
+        visible: { y: 0, opacity: 1 },
+        hidden: { y: '-100%', opacity: 0 },
+      };
+
+  const pageVariants = shouldReduceMotion
+    ? {
+        initial: { opacity: 1 },
+        animate: { opacity: 1 },
+        exit: { opacity: 1 },
+      }
+    : pageTransition;
 
   const navItems = [
     { to: '/', label: 'Home', icon: Home, end: true },
@@ -17,22 +47,15 @@ export function Layout() {
     { to: user ? '/account' : '/signin', label: user ? 'Account' : 'Sign In', icon: User },
   ];
 
-  const pageVariants = shouldReduceMotion
-    ? {
-        initial: { opacity: 1 },
-        animate: { opacity: 1 },
-        exit: { opacity: 1 },
-      }
-    : {
-        initial: { opacity: 0, y: 8 },
-        animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
-        exit: { opacity: 0, y: -6, transition: { duration: 0.18, ease: 'easeIn' } },
-      };
-
   return (
     <div className="min-h-screen flex flex-col bg-cream-50 text-stone-800">
       {/* Desktop Top Navigation Bar */}
-      <header className="hidden md:block sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-blush-100 shadow-xs">
+      <motion.header
+        variants={headerVariants}
+        animate={navHidden ? 'hidden' : 'visible'}
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        className="hidden md:block sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-blush-100 shadow-xs"
+      >
         <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blush-500 to-gold-400 flex items-center justify-center text-white shadow-soft group-hover:scale-105 transition-transform duration-300">
@@ -144,10 +167,15 @@ export function Layout() {
             )}
           </nav>
         </div>
-      </header>
+      </motion.header>
 
       {/* Mobile Header */}
-      <header className="md:hidden sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-blush-100/80 px-4 h-14 flex items-center justify-between">
+      <motion.header
+        variants={headerVariants}
+        animate={navHidden ? 'hidden' : 'visible'}
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        className="md:hidden sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-blush-100/80 px-4 h-14 flex items-center justify-between"
+      >
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blush-500 to-gold-400 flex items-center justify-center text-white shadow-xs">
             <Gift className="w-4 h-4" />
@@ -174,7 +202,7 @@ export function Layout() {
             Sign in
           </Link>
         )}
-      </header>
+      </motion.header>
 
       {/* Main Content Area */}
       <main className="flex-1 pb-20 md:pb-12">

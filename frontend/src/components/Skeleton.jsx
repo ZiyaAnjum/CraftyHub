@@ -1,10 +1,24 @@
 import React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 
 export function Skeleton({ className = '' }) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div
-      className={`animate-pulse bg-gradient-to-r from-stone-200/70 via-stone-100 to-stone-200/70 rounded ${className}`}
-    />
+    <div className={`relative overflow-hidden bg-stone-200/60 rounded ${className}`}>
+      {!shouldReduceMotion && (
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none"
+          initial={{ x: '-100%' }}
+          animate={{ x: '100%' }}
+          transition={{
+            repeat: Infinity,
+            duration: 1.5,
+            ease: 'linear',
+          }}
+        />
+      )}
+    </div>
   );
 }
 

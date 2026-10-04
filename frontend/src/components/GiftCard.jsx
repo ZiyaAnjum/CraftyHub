@@ -1,12 +1,22 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, Tag } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 export function GiftCard({ gift }) {
+  const shouldReduceMotion = useReducedMotion();
   const primaryImage = gift.images?.[0]?.url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80';
 
   return (
-    <div className="group bg-white rounded-3xl border border-stone-200/80 overflow-hidden shadow-soft hover:shadow-elevated transition-all flex flex-col justify-between">
+    <motion.div
+      initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+      whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-20px' }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      whileHover={shouldReduceMotion ? {} : { y: -5, transition: { duration: 0.25, ease: 'easeOut' } }}
+      whileTap={shouldReduceMotion ? {} : { scale: 0.97, transition: { duration: 0.2 } }}
+      className="group bg-white rounded-3xl border border-stone-200/80 overflow-hidden shadow-soft hover:shadow-elevated transition-shadow flex flex-col justify-between"
+    >
       <div>
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-100">
           <img
@@ -56,6 +66,6 @@ export function GiftCard({ gift }) {
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
-    </div>
+    </motion.div>
   );
 }
