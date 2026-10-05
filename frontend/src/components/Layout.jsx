@@ -1,35 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useMotionValueEvent, useReducedMotion } from 'framer-motion';
+import React from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { pageTransition } from '../lib/motion';
-import { Home, Compass, Gift, Package, User, Sparkles } from 'lucide-react';
+import { Home, Compass, Gift, Package, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { SiteHeader } from './layout/SiteHeader';
 
 export function Layout() {
   const { user } = useAuth();
   const location = useLocation();
   const shouldReduceMotion = useReducedMotion();
-
-  const { scrollY } = useScroll();
-  const [navHidden, setNavHidden] = useState(false);
-  const lastYRef = useRef(0);
-
-  useMotionValueEvent(scrollY, 'change', (latest) => {
-    const previous = lastYRef.current;
-    const hidden = latest > previous && latest > 80;
-    setNavHidden(hidden);
-    lastYRef.current = latest;
-  });
-
-  const headerVariants = shouldReduceMotion
-    ? {
-        visible: { opacity: 1 },
-        hidden: { opacity: 0 },
-      }
-    : {
-        visible: { y: 0, opacity: 1 },
-        hidden: { y: '-100%', opacity: 0 },
-      };
 
   const pageVariants = shouldReduceMotion
     ? {
@@ -49,160 +29,8 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-cream-50 text-stone-800">
-      {/* Desktop Top Navigation Bar */}
-      <motion.header
-        variants={headerVariants}
-        animate={navHidden ? 'hidden' : 'visible'}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="hidden md:block sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-blush-100 shadow-xs"
-      >
-        <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blush-500 to-gold-400 flex items-center justify-center text-white shadow-soft group-hover:scale-105 transition-transform duration-300">
-              <Gift className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-serif text-2xl font-bold tracking-tight text-stone-900 group-hover:text-blush-600 transition-colors">
-                Fouzas Creation
-              </span>
-              <p className="text-xs text-stone-500 font-sans tracking-wider">
-                Made for your special moments
-              </p>
-            </div>
-          </Link>
-
-          <nav className="flex items-center gap-1 lg:gap-2">
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-xl text-sm font-medium transition-all tap-target ${
-                  isActive
-                    ? 'text-blush-600 bg-blush-50/80 font-semibold shadow-xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60'
-                }`
-              }
-            >
-              Home
-            </NavLink>
-
-            <NavLink
-              to="/explore"
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-xl text-sm font-medium transition-all tap-target ${
-                  isActive
-                    ? 'text-blush-600 bg-blush-50/80 font-semibold shadow-xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60'
-                }`
-              }
-            >
-              Explore
-            </NavLink>
-
-            <NavLink
-              to="/create"
-              className={({ isActive }) =>
-                `mx-1 px-4 py-2 rounded-xl text-sm font-semibold transition-all tap-target flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-blush-500 to-blush-600 text-white shadow-soft ring-2 ring-blush-200'
-                    : 'bg-blush-50 text-blush-600 hover:bg-blush-100'
-                }`
-              }
-            >
-              <Sparkles className="w-4 h-4 text-gold-400" />
-              <span>Create Gift</span>
-            </NavLink>
-
-            <NavLink
-              to="/orders"
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-xl text-sm font-medium transition-all tap-target ${
-                  isActive
-                    ? 'text-blush-600 bg-blush-50/80 font-semibold shadow-xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60'
-                }`
-              }
-            >
-              My Orders
-            </NavLink>
-
-            {user?.role === 'admin' && (
-              <NavLink
-                to="/admin/gifts"
-                className={({ isActive }) =>
-                  `px-3 py-2 rounded-xl text-sm font-medium transition-all tap-target ${
-                    isActive
-                      ? 'text-purple-700 bg-purple-50 font-semibold shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60'
-                  }`
-                }
-              >
-                Manage Gifts
-              </NavLink>
-            )}
-
-            {user ? (
-              <NavLink
-                to="/account"
-                className={({ isActive }) =>
-                  `ml-2 px-3 py-2 rounded-xl text-sm font-medium transition-all tap-target flex items-center gap-2 ${
-                    isActive
-                      ? 'text-blush-700 bg-blush-50 font-semibold'
-                      : 'text-stone-700 hover:bg-stone-100/80'
-                  }`
-                }
-              >
-                <div className="w-7 h-7 rounded-full bg-gold-200 text-stone-800 flex items-center justify-center text-xs font-bold">
-                  {user.name ? user.name[0].toUpperCase() : 'U'}
-                </div>
-                <span className="max-w-[120px] truncate">{user.name?.split(' ')[0]}</span>
-              </NavLink>
-            ) : (
-              <NavLink
-                to="/signin"
-                className="ml-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-stone-900 hover:bg-stone-800 transition-colors shadow-soft tap-target"
-              >
-                Sign In
-              </NavLink>
-            )}
-          </nav>
-        </div>
-      </motion.header>
-
-      {/* Mobile Header */}
-      <motion.header
-        variants={headerVariants}
-        animate={navHidden ? 'hidden' : 'visible'}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="md:hidden sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-blush-100/80 px-4 h-14 flex items-center justify-between"
-      >
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blush-500 to-gold-400 flex items-center justify-center text-white shadow-xs">
-            <Gift className="w-4 h-4" />
-          </div>
-          <span className="font-serif text-lg font-bold tracking-tight text-stone-900">
-            Fouzas Creation
-          </span>
-        </Link>
-        {user ? (
-          <Link
-            to="/account"
-            className="flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-blush-50 text-xs font-medium text-blush-700 border border-blush-100"
-          >
-            <span className="w-5 h-5 rounded-full bg-gold-300 text-stone-900 flex items-center justify-center text-[10px] font-bold">
-              {user.name ? user.name[0].toUpperCase() : 'U'}
-            </span>
-            <span className="max-w-[80px] truncate">{user.name?.split(' ')[0]}</span>
-          </Link>
-        ) : (
-          <Link
-            to="/signin"
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-stone-900 text-white"
-          >
-            Sign in
-          </Link>
-        )}
-      </motion.header>
+      {/* Site Header across the site */}
+      <SiteHeader />
 
       {/* Main Content Area */}
       <main className="flex-1 pb-20 md:pb-12">

@@ -19,6 +19,7 @@ import { api } from '../lib/api';
 import { stagger, fadeUp } from '../lib/motion';
 import { GiftCard } from '../components/GiftCard';
 import { GiftCardSkeleton } from '../components/Skeleton';
+import { Hero } from '../components/home/Hero';
 
 const OCCASIONS = [
   {
@@ -142,107 +143,13 @@ export function HomePage() {
     : fadeUp;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-14 sm:space-y-20">
-      {/* 1. Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blush-50 via-cream-100 to-gold-50/70 border border-blush-200/60 p-6 sm:p-12 shadow-soft text-center sm:text-left">
-        {/* Softly floating background shapes (3 max, transform only) */}
-        <motion.div
-          className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-blush-200/40 blur-2xl pointer-events-none"
-          animate={shouldReduceMotion ? {} : {
-            x: [0, 15, -10, 0],
-            y: [0, -15, 10, 0],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-        <motion.div
-          className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full bg-gold-200/30 blur-2xl pointer-events-none"
-          animate={shouldReduceMotion ? {} : {
-            x: [0, -12, 14, 0],
-            y: [0, 14, -12, 0],
-          }}
-          transition={{
-            duration: 9,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-        <motion.div
-          className="absolute top-1/2 -right-8 w-36 h-36 rounded-full bg-rose-200/25 blur-2xl pointer-events-none"
-          animate={shouldReduceMotion ? {} : {
-            x: [0, -10, 8, 0],
-            y: [0, 10, -10, 0],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
+    <div className="space-y-14 sm:space-y-20">
+      {/* 1. Immersive Hero Section */}
+      <Hero />
 
-        <motion.div
-          className="relative z-10 max-w-2xl"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
-        >
-          <motion.div
-            variants={itemVariants}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-blush-200 text-blush-700 text-xs sm:text-sm font-medium mb-4 shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-gold-500" />
-            <span>Smart Personalized Gifting</span>
-          </motion.div>
-
-          <motion.h1
-            variants={itemVariants}
-            className="font-serif text-3xl sm:text-5xl lg:text-6xl font-bold text-stone-900 tracking-tight leading-[1.15]"
-          >
-            Fouzas Creation
-          </motion.h1>
-
-          <motion.p
-            variants={itemVariants}
-            className="mt-3 text-lg sm:text-2xl text-stone-600 font-serif italic"
-          >
-            Made for your special moments
-          </motion.p>
-
-          <motion.p
-            variants={itemVariants}
-            className="mt-4 text-stone-600 text-sm sm:text-base leading-relaxed max-w-xl"
-          >
-            Bespoke gift hampers, handcrafted bouquets, personalized memory frames, and artisanal creations crafted exclusively for the people you cherish most.
-          </motion.p>
-
-          <motion.div
-            variants={itemVariants}
-            className="mt-8 flex flex-col sm:flex-row items-center gap-3 sm:gap-4"
-          >
-            <Link
-              to="/create"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blush-500 via-blush-600 to-rose-600 hover:from-blush-600 hover:to-rose-700 text-white font-semibold text-base shadow-elevated transition-all transform active:scale-95 flex items-center justify-center gap-2 tap-target"
-            >
-              <Gift className="w-5 h-5 text-gold-200" />
-              <span>Create Your Gift</span>
-            </Link>
-
-            <Link
-              to="/explore"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/90 hover:bg-white text-stone-700 font-medium text-base border border-stone-200 shadow-soft transition-all active:scale-95 flex items-center justify-center gap-2 tap-target"
-            >
-              <span>Explore Catalog</span>
-              <ChevronRight className="w-4 h-4 text-stone-400" />
-            </Link>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* 2. Featured Gifts Grid */}
-      <section className="space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-14 sm:space-y-20">
+        {/* 2. Featured Gifts Grid */}
+        <section id="home-featured-section" className="space-y-6 pt-4">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-gold-600 font-semibold mb-1">
@@ -454,6 +361,7 @@ export function HomePage() {
           </div>
         </div>
       </section>
+      </div>
     </div>
   );
 }

@@ -44,6 +44,33 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Typography utility */
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  /* Badge 20s rotate animation */
+  @keyframes rotateBadge {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-rotate-slow {
+    animation: rotateBadge 20s linear infinite;
+    transform-origin: center;
+  }
+
+  /* Hide scroll indicator text on short screens (<700px height) */
+  @media (max-height: 700px) {
+    .hide-on-short-screen {
+      display: none !important;
+    }
+  }
 }
 
 /* Reduced motion preference */
