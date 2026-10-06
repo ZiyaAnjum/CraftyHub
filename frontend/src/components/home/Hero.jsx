@@ -96,10 +96,15 @@ export function Hero() {
       };
 
   return (
-    <section className="relative min-h-[100svh] flex flex-col justify-between text-white px-[5%] overflow-hidden bg-gradient-to-b from-[#F6D5DA] via-[#FBF5EC] to-[#F6D5DA] pt-28 sm:pt-32 md:pt-36 pb-24 select-none">
+    <section
+      className="relative min-h-[100svh] flex flex-col justify-between text-white px-[5%] overflow-hidden pt-28 sm:pt-32 md:pt-36 pb-24 select-none"
+      style={{
+        background: 'linear-gradient(135deg, #2B1620 0%, #5A2A3C 55%, #8A3B54 100%)',
+      }}
+    >
       {/* 1. Self-hosted Video Background with Ken Burns Slow Scale */}
       <motion.div
-        className="absolute inset-0 -z-20 overflow-hidden pointer-events-none"
+        className="absolute inset-0 z-0 overflow-hidden pointer-events-none"
         animate={prefersReducedMotion ? { scale: 1 } : { scale: [1, 1.06] }}
         transition={{
           duration: 20,
@@ -123,28 +128,38 @@ export function Hero() {
         </video>
       </motion.div>
 
-      {/* 2. Overlays & Scrims for Readability (Item 8) */}
+      {/* 2. Triple Scrim Overlays for Readability (z-10) */}
+      {/* Base dark tint */}
       <div
-        className="absolute inset-0 -z-10 pointer-events-none bg-gradient-to-b from-black/25 via-black/10 to-black/30"
+        className="absolute inset-0 z-10 pointer-events-none bg-[#14080e]/35"
+        aria-hidden="true"
+      />
+      {/* Vertical gradient overlay */}
+      <div
+        className="absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.45) 100%)',
+        }}
         aria-hidden="true"
       />
       {/* Soft radial dark scrim behind text */}
       <div
-        className="absolute inset-0 -z-10 pointer-events-none"
+        className="absolute inset-0 z-10 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0) 100%)',
+            'radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0) 100%)',
         }}
         aria-hidden="true"
       />
 
-      {/* 3. Circular Rotating Badge (Item 5 & 6, Hidden <=992px) */}
+      {/* 3. Circular Rotating Badge (Hidden <=992px) */}
       <motion.div
         aria-hidden="true"
         initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
         animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.3 }}
-        className="hidden min-[993px]:flex absolute right-[3%] xl:right-[5%] top-[18%] w-[140px] h-[140px] rounded-full border border-white/30 items-center justify-center p-3 pointer-events-none z-10"
+        className="hidden min-[993px]:flex absolute right-[3%] xl:right-[5%] top-[18%] w-[140px] h-[140px] rounded-full border border-white/40 items-center justify-center p-3 pointer-events-none z-20"
       >
         <div className="relative w-full h-full flex items-center justify-center">
           <svg
@@ -170,18 +185,24 @@ export function Hero() {
 
             {/* HANDPICKED on top arc */}
             <text
-              className="fill-white font-sans text-[10.5px] font-light tracking-[3.5px]"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="fill-white font-sans text-[10.5px] font-medium tracking-[3.5px]"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.45))',
+              }}
             >
               <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">
                 {heroContent.badgeTop}
               </textPath>
             </text>
 
-            {/* WITH LOVE on bottom arc (now upright!) */}
+            {/* WITH LOVE on bottom arc */}
             <text
-              className="fill-white font-sans text-[10.5px] font-light tracking-[3.5px]"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="fill-white font-sans text-[10.5px] font-medium tracking-[3.5px]"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.45))',
+              }}
             >
               <textPath href={`#${bottomPathId}`} startOffset="50%" textAnchor="middle">
                 {heroContent.badgeBottom}
@@ -195,15 +216,15 @@ export function Hero() {
 
           {/* Static centered flower icon */}
           <Flower2
-            className="absolute w-6 h-6 text-white/90"
+            className="absolute w-6 h-6 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
             strokeWidth={1.5}
             aria-hidden="true"
           />
         </div>
       </motion.div>
 
-      {/* 4. Central Hero Content Area (Item 2 & 3: Centered, No Negative Margin, Max-width 900px) */}
-      <div className="flex-1 flex flex-col justify-center items-center relative w-full max-w-6xl mx-auto my-auto">
+      {/* 4. Central Hero Content Area (Centered, Max-width 900px, z-20) */}
+      <div className="flex-1 flex flex-col justify-center items-center relative z-20 w-full max-w-6xl mx-auto my-auto">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -213,7 +234,10 @@ export function Hero() {
           {/* Subtitle */}
           <motion.p
             variants={itemVariants}
-            className="text-xs sm:text-sm tracking-[3px] uppercase mb-4 sm:mb-6 opacity-90 font-sans font-normal text-stone-100"
+            className="text-xs sm:text-sm tracking-[3px] uppercase mb-4 sm:mb-6 font-sans font-medium text-white"
+            style={{
+              textShadow: '0 2px 14px rgba(0, 0, 0, 0.45)',
+            }}
           >
             {heroContent.subtitle}
           </motion.p>
@@ -227,24 +251,27 @@ export function Hero() {
               fontSize: 'clamp(2.5rem, min(6vw, 9vh), 5rem)',
               lineHeight: 1.1,
               textWrap: 'balance',
-              textShadow: '0 2px 10px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5)',
+              textShadow: '0 2px 18px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5)',
             }}
           >
             {heroContent.headingLine1}
             <br />
             <span
-              className="italic text-[#C9A24B]"
+              className="italic text-[#E0BC6A]"
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
             >
               {heroContent.headingLine2}
             </span>
           </motion.h1>
 
-          {/* Paragraph (Kept at max-w-[480px]) */}
+          {/* Paragraph (Kept at max-w-[480px], weight 400, opacity 95) */}
           <motion.p
             variants={itemVariants}
-            className="text-base sm:text-[1.15rem] leading-[1.6] font-light mb-8 sm:mb-10 opacity-90 max-w-[480px] font-sans text-stone-100"
-            style={{ textWrap: 'balance' }}
+            className="text-base sm:text-[1.15rem] leading-[1.6] font-normal mb-8 sm:mb-10 opacity-95 max-w-[480px] font-sans text-white"
+            style={{
+              textWrap: 'balance',
+              textShadow: '0 2px 18px rgba(0, 0, 0, 0.35)',
+            }}
             dangerouslySetInnerHTML={{ __html: heroContent.paragraph }}
           />
 
@@ -252,7 +279,7 @@ export function Hero() {
           <motion.div variants={itemVariants}>
             <Link
               to="/explore"
-              className={`bg-[#C4486A] hover:bg-[#b03b5a] text-white rounded-full px-8 py-4 inline-flex items-center gap-3 min-h-[44px] transition-all duration-300 font-sans font-medium text-sm sm:text-base tap-target shadow-[0_10px_25px_-5px_rgba(196,72,106,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] focus-visible:ring-offset-2 ${
+              className={`bg-[#C4486A] hover:bg-[#b03b5a] text-white rounded-full px-8 py-4 inline-flex items-center gap-3 min-h-[44px] transition-all duration-300 font-sans font-medium text-sm sm:text-base tap-target shadow-[0_10px_25px_-5px_rgba(196,72,106,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] focus-visible:ring-offset-2 ${
                 prefersReducedMotion ? '' : 'hover:-translate-y-0.5'
               }`}
             >
@@ -263,18 +290,18 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* 5. Scroll Indicator (Item 3 & 7: 2rem clearance, gentle bobbing, label hidden on short screens) */}
+      {/* 5. Scroll Indicator (Relative z-20) */}
       <motion.div
         variants={itemVariants}
         initial="hidden"
         animate="visible"
-        className="flex flex-col items-center justify-center w-full z-10 pt-4"
+        className="flex flex-col items-center justify-center w-full relative z-20 pt-4"
       >
         <button
           type="button"
           onClick={scrollToNext}
           aria-label={heroContent.scrollText}
-          className="flex flex-col items-center gap-2.5 group tap-target cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] rounded-full p-2"
+          className="flex flex-col items-center gap-2.5 group tap-target cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] rounded-full p-2"
         >
           <motion.div
             animate={prefersReducedMotion ? { y: 0 } : { y: [0, 6, 0] }}
@@ -283,11 +310,14 @@ export function Hero() {
               repeat: Infinity,
               ease: 'easeInOut',
             }}
-            className="w-10 h-10 rounded-full border border-white/40 flex items-center justify-center group-hover:border-white transition-colors duration-200"
+            className="w-10 h-10 rounded-full border border-white/40 flex items-center justify-center group-hover:border-white transition-colors duration-200 shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
           >
             <ArrowDown className="w-4 h-4 text-white" />
           </motion.div>
-          <span className="hide-on-short-screen text-[10px] tracking-[2px] uppercase opacity-80 font-sans text-white/90 group-hover:opacity-100 transition-opacity">
+          <span
+            className="hide-on-short-screen text-[10px] tracking-[2px] uppercase opacity-90 font-sans text-white group-hover:opacity-100 transition-opacity"
+            style={{ textShadow: '0 2px 10px rgba(0, 0, 0, 0.4)' }}
+          >
             {heroContent.scrollText}
           </span>
         </button>

@@ -87,19 +87,20 @@ export function SiteHeader() {
       <header
         className={`fixed top-0 left-0 right-0 z-40 h-[76px] sm:h-[84px] md:h-[90px] flex items-center transition-all duration-300 ${
           isSolid
-            ? 'bg-[#FBF5EC]/95 backdrop-blur-md border-b border-blush-100 shadow-sm text-stone-900'
-            : 'bg-white/5 backdrop-blur-md border-b border-white/10 text-white'
+            ? 'bg-[#FBF5EC] border-b border-blush-100 shadow-sm text-stone-900'
+            : 'bg-black/15 backdrop-blur-md border-b border-white/10 text-white'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex items-center justify-between relative">
           {/* 1. Left: Brand Logo */}
           <Link
             to="/"
-            className="flex items-center gap-[0.8rem] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] focus-visible:ring-offset-2 rounded-lg py-1 px-1.5 -ml-1.5"
+            className="flex items-center gap-[0.8rem] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] focus-visible:ring-offset-2 rounded-lg py-1 px-1.5 -ml-1.5"
+            style={!isSolid ? { textShadow: '0 2px 12px rgba(0,0,0,0.35)' } : undefined}
           >
             <Flower2
               className={`w-5 h-5 transition-transform duration-300 group-hover:rotate-12 ${
-                isSolid ? 'text-[#C4486A]' : 'text-rose-300'
+                isSolid ? 'text-[#C4486A]' : 'text-rose-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
               }`}
               strokeWidth={2}
             />
@@ -116,6 +117,7 @@ export function SiteHeader() {
           <nav
             aria-label="Main Navigation"
             className="hidden min-[993px]:flex items-center gap-10 absolute left-1/2 -translate-x-1/2 text-[0.9rem] font-light"
+            style={!isSolid ? { textShadow: '0 2px 12px rgba(0,0,0,0.35)' } : undefined}
           >
             {navLinks.map((link) => (
               <NavLink
@@ -123,14 +125,14 @@ export function SiteHeader() {
                 to={link.to}
                 end={link.end}
                 className={({ isActive }) =>
-                  `relative py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] rounded-sm ${
+                  `relative py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] rounded-sm ${
                     isActive
                       ? isSolid
                         ? 'text-stone-950 font-normal'
-                        : 'text-white font-normal'
+                        : 'text-white font-medium'
                       : isSolid
                         ? 'text-stone-600 hover:text-stone-900'
-                        : 'text-white/80 hover:text-white'
+                        : 'text-white/85 hover:text-white'
                   }`
                 }
               >
@@ -139,7 +141,7 @@ export function SiteHeader() {
                     <span>{link.label}</span>
                     {isActive && (
                       <span
-                        className="absolute -bottom-[10px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#C4486A]"
+                        className="absolute -bottom-[10px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#C4486A] shadow-[0_1px_4px_rgba(196,72,106,0.6)]"
                         aria-hidden="true"
                       />
                     )}
@@ -155,10 +157,10 @@ export function SiteHeader() {
             <Link
               to="/explore"
               aria-label="Search gifts catalog"
-              className={`p-2 rounded-full tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] ${
+              className={`p-2 rounded-full tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
                 isSolid
                   ? 'text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
-                  : 'text-white/90 hover:text-white hover:bg-white/10'
+                  : 'text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
               }`}
             >
               <Search className="w-5 h-5" />
@@ -168,10 +170,10 @@ export function SiteHeader() {
             <Link
               to={user ? '/orders' : '/signin'}
               aria-label={user ? 'My Orders and Account' : 'Sign in to account'}
-              className={`p-2 rounded-full tap-target relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] ${
+              className={`p-2 rounded-full tap-target relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
                 isSolid
                   ? 'text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
-                  : 'text-white/90 hover:text-white hover:bg-white/10'
+                  : 'text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
               }`}
             >
               {user ? <Package className="w-5 h-5" /> : <User className="w-5 h-5" />}
@@ -183,11 +185,12 @@ export function SiteHeader() {
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`hidden sm:inline-flex items-center gap-2 text-xs font-medium tracking-wide uppercase px-5 py-2.5 rounded-full border transition-all duration-200 tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] focus-visible:ring-offset-2 ${
+                className={`hidden sm:inline-flex items-center gap-2 text-xs font-medium tracking-wide uppercase px-5 py-2.5 rounded-full border transition-all duration-200 tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] focus-visible:ring-offset-2 ${
                   isSolid
                     ? 'border-stone-300 text-stone-800 hover:border-stone-500 hover:bg-stone-50'
-                    : 'border-white/40 text-white hover:border-white hover:bg-white/10'
+                    : 'border-white/40 text-white hover:border-white hover:bg-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.25)]'
                 }`}
+                style={!isSolid ? { textShadow: '0 2px 10px rgba(0,0,0,0.35)' } : undefined}
               >
                 <span>Get in Touch</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -195,11 +198,12 @@ export function SiteHeader() {
             ) : (
               <Link
                 to="/explore"
-                className={`hidden sm:inline-flex items-center gap-2 text-xs font-medium tracking-wide uppercase px-5 py-2.5 rounded-full border transition-all duration-200 tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] focus-visible:ring-offset-2 ${
+                className={`hidden sm:inline-flex items-center gap-2 text-xs font-medium tracking-wide uppercase px-5 py-2.5 rounded-full border transition-all duration-200 tap-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] focus-visible:ring-offset-2 ${
                   isSolid
                     ? 'border-stone-300 text-stone-800 hover:border-stone-500 hover:bg-stone-50'
-                    : 'border-white/40 text-white hover:border-white hover:bg-white/10'
+                    : 'border-white/40 text-white hover:border-white hover:bg-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.25)]'
                 }`}
+                style={!isSolid ? { textShadow: '0 2px 10px rgba(0,0,0,0.35)' } : undefined}
               >
                 <span>Get in Touch</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -214,10 +218,10 @@ export function SiteHeader() {
               aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={isOpen}
               aria-controls="mobile-menu-overlay"
-              className={`min-[993px]:hidden p-2 rounded-xl tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24B] ${
+              className={`min-[993px]:hidden p-2 rounded-xl tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
                 isSolid
                   ? 'text-stone-800 hover:text-stone-950 hover:bg-stone-100/70'
-                  : 'text-white hover:bg-white/10'
+                  : 'text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
               }`}
             >
               {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
