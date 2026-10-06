@@ -1,29 +1,76 @@
 import mongoose from 'mongoose';
-import crypto from 'node:crypto';
+import { getNextOrderNumber } from './Counter.js';
 
-export const ORDER_STATUSES = ['Received', 'Confirmed', 'In Progress', 'Ready', 'Delivered', 'Cancelled'];
+export const ORDER_STATUSES = [
+  'placed',
+  'confirmed',
+  'in_progress',
+  'ready',
+  'delivered',
+  'cancelled',
+];
+
+const customerInfoSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    phone: { type: String, required: true, trim: true, match: /^[6-9]\d{9}$/ },
+    address: { type: String, trim: true, maxlength: 500, default: '' },
+  },
+  { _id: false }
+);
+
+const referenceImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true },
+    publicId: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const statusHistorySchema = new mongoose.Schema(
+  {
+    status: { type: String, required: true, enum: ORDER_STATUSES },
+    changedAt: { type: Date, default: Date.now },
+    note: { type: String, trim: true, maxlength: 500, default: '' },
+  },
+  { _id: false }
+);
 
 const orderSchema = new mongoose.Schema(
   {
-    // Random, non-sequential ID so orders cannot be enumerated
-    orderId: { type: String, unique: true, default: () => 'FC-' + crypto.randomBytes(4).toString('hex').toUpperCase() },
+    orderNumber: { type: String, unique: true, index: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    occasion: { type: String, required: true, maxlength: 60 },
-    budget: { type: Number, required: true, min: 0, max: 1000000 },
-    items: [{ name: { type: String, maxlength: 120 }, qty: { type: Number, min: 1, max: 100 } }],
-    customization: {
-      text: { type: String, maxlength: 200 },
-      font: { type: String, maxlength: 40 },
-      colour: { type: String, maxlength: 40 },
-      theme: { type: String, maxlength: 40 },
-      notes: { type: String, maxlength: 1000 },
+    item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
+    customer: { type: customerInfoSchema, required: true },
+    requirements: { type: String, trim: true, maxlength: 2000, default: '' },
+    referenceImages: { type: [referenceImageSchema], default: [] },
+    neededByDate: { type: Date, default: null },
+    status: {
+      type: String,
+      enum: ORDER_STATUSES,
+      default: 'placed',
+      index: true,
     },
-    preferredDate: { type: Date },
-    status: { type: String, enum: ORDER_STATUSES, default: 'Received' },
-    customerNote: { type: String, maxlength: 500 },
-    statusHistory: [{ status: String, at: { type: Date, default: Date.now }, by: String }],
+    quotedPrice: { type: Number, default: null, min: 0 },
+    readyBy: { type: Date, default: null },
+    adminNotes: { type: String, trim: true, maxlength: 1000, default: '' },
+    statusHistory: { type: [statusHistorySchema], default: [] },
   },
   { timestamps: true }
 );
+
+orderSchema.pre('validate', async function (next) {
+  if (!this.orderNumber) {
+    try {
+      this.orderNumber = await getNextOrderNumber();
+    } catch (err) {
+      return next(err);
+    }
+  }
+  if (!this.statusHistory || this.statusHistory.length === 0) {
+    this.statusHistory = [{ status: this.status || 'placed', changedAt: new Date(), note: 'Order placed' }];
+  }
+  next();
+});
 
 export const Order = mongoose.model('Order', orderSchema);

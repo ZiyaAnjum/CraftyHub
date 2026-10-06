@@ -6,5 +6,5 @@
 - Never commit .env or hardcode secrets.
 - Frontend: React + Vite + Tailwind + Framer Motion, mobile-first.
 - Every API call uses credentials: 'include' and the header X-Requested-With: fouzas-web.
-- Use getSafeNextPath from client/src/lib/safeNext.js for every post-login redirect. Do not write redirect checks inline.
+- Use getSafeNextPath from frontend/src/lib/safeNext.js for every post-login redirect. Do not write redirect checks inline.
 - Only modify server/ for tasks I explicitly name.

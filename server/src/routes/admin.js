@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { Order, ORDER_STATUSES } from '../models/Order.js';
-import { Gift, GIFT_CATEGORIES, slugify } from '../models/Gift.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { Item, ITEM_CATEGORIES, slugify } from '../models/Item.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { uploadSingleImage } from '../middleware/upload.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js';
+import { formatItemResponse } from './items.js';
 
 const router = Router();
-router.use(requireAuth, requireRole('admin'));
+router.use(requireAuth, requireAdmin);
 
 // --- ORDERS ---
 
@@ -16,39 +17,90 @@ router.get('/orders', async (req, res, next) => {
   try {
     const status = ORDER_STATUSES.includes(req.query.status) ? req.query.status : undefined;
     const filter = status ? { status } : {};
-    const orders = await Order.find(filter).populate('user', 'name email phone').sort({ createdAt: -1 }).limit(200);
-    res.json({ orders });
-  } catch (e) { next(e); }
+    const orders = await Order.find(filter)
+      .populate('user', 'name email phone')
+      .populate('item', 'title category startingPrice images')
+      .sort({ createdAt: -1 })
+      .limit(200);
+
+    const formattedOrders = orders.map((o) => ({
+      ...o.toObject(),
+      id: o._id,
+      orderId: o.orderNumber, // alias for frontend
+    }));
+
+    res.json({ orders: formattedOrders });
+  } catch (e) {
+    next(e);
+  }
 });
 
-const updateOrderSchema = z.object({
-  status: z.enum(ORDER_STATUSES).optional(),
-  customerNote: z.string().trim().max(500).optional(),
-}).strict();
+const updateOrderSchema = z
+  .object({
+    status: z.enum(ORDER_STATUSES).optional(),
+    adminNotes: z.string().trim().max(1000).optional(),
+    customerNote: z.string().trim().max(500).optional(), // alias
+    quotedPrice: z.number().min(0).optional().nullable(),
+    readyBy: z.coerce.date().optional().nullable(),
+    note: z.string().trim().max(500).optional(),
+  })
+  .strict();
 
-router.patch('/orders/:orderId', validateBody(updateOrderSchema), async (req, res, next) => {
+router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async (req, res, next) => {
   try {
-    if (!/^FC-[0-9A-F]{8}$/.test(req.params.orderId)) return res.status(404).json({ error: 'Order not found.' });
-    const order = await Order.findOne({ orderId: req.params.orderId });
+    const idParam = req.params.orderNumberOrId;
+    let order = null;
+
+    if (idParam.startsWith('FC-')) {
+      order = await Order.findOne({ orderNumber: idParam });
+    } else if (/^[0-9a-fA-F]{24}$/.test(idParam)) {
+      order = await Order.findById(idParam);
+    }
+
     if (!order) return res.status(404).json({ error: 'Order not found.' });
-    const { status, customerNote } = req.body;
+
+    const { status, adminNotes, customerNote, quotedPrice, readyBy, note } = req.body;
+    const noteText = adminNotes || customerNote || note || '';
+
     if (status && status !== order.status) {
       order.status = status;
-      order.statusHistory.push({ status, by: `admin:${req.user.id}` });
+      order.statusHistory.push({
+        status,
+        changedAt: new Date(),
+        note: noteText || `Status updated to ${status} by admin`,
+      });
     }
-    if (customerNote !== undefined) order.customerNote = customerNote;
+
+    if (adminNotes !== undefined) order.adminNotes = adminNotes;
+    else if (customerNote !== undefined) order.adminNotes = customerNote;
+
+    if (quotedPrice !== undefined) order.quotedPrice = quotedPrice;
+    if (readyBy !== undefined) order.readyBy = readyBy;
+
     await order.save();
-    res.json({ order });
-  } catch (e) { next(e); }
+    const updated = await Order.findById(order._id)
+      .populate('user', 'name email phone')
+      .populate('item', 'title category startingPrice images');
+
+    res.json({
+      order: {
+        ...updated.toObject(),
+        id: updated._id,
+        orderId: updated.orderNumber,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
-// --- GIFTS ---
+// --- ITEMS (CRUD) ---
 
 async function getUniqueSlug(baseSlug, currentId = null) {
   let slug = baseSlug;
   let counter = 1;
   while (true) {
-    const existing = await Gift.findOne({ slug });
+    const existing = await Item.findOne({ slug });
     if (!existing || (currentId && existing._id.toString() === currentId.toString())) {
       return slug;
     }
@@ -57,108 +109,150 @@ async function getUniqueSlug(baseSlug, currentId = null) {
   }
 }
 
-const giftImageSchema = z.object({
-  url: z.string().url(),
-  publicId: z.string().default(''),
-}).strict();
+const itemImageSchema = z
+  .object({
+    url: z.string().url(),
+    publicId: z.string().default(''),
+  })
+  .strict();
 
-const createGiftSchema = z.object({
-  title: z.string().trim().min(2).max(120),
-  slug: z.string().trim().min(2).max(140).optional(),
-  category: z.enum(GIFT_CATEGORIES),
-  shortDescription: z.string().trim().max(300).optional().default(''),
-  description: z.string().trim().min(1).max(5000),
-  price: z.number().min(0),
-  priceNote: z.string().trim().max(60).optional().default(''),
-  images: z.array(giftImageSchema).min(1).max(6),
-  includes: z.array(z.string().trim().max(120)).optional().default([]),
-  customizationOptions: z.array(z.string().trim().max(120)).optional().default([]),
-  occasions: z.array(z.string().trim().max(60)).optional().default([]),
-  deliveryInfo: z.string().trim().max(500).optional().default(''),
-  isFeatured: z.boolean().optional().default(false),
-  isPublished: z.boolean().optional().default(true),
-}).strict();
+const customizationOptionSchema = z
+  .object({
+    label: z.string().trim().min(1).max(100),
+    type: z.string().trim().min(1).max(50),
+  })
+  .strict();
 
-const updateGiftSchema = z.object({
-  title: z.string().trim().min(2).max(120).optional(),
-  slug: z.string().trim().min(2).max(140).optional(),
-  category: z.enum(GIFT_CATEGORIES).optional(),
-  shortDescription: z.string().trim().max(300).optional(),
-  description: z.string().trim().min(1).max(5000).optional(),
-  price: z.number().min(0).optional(),
-  priceNote: z.string().trim().max(60).optional(),
-  images: z.array(giftImageSchema).min(1).max(6).optional(),
-  includes: z.array(z.string().trim().max(120)).optional(),
-  customizationOptions: z.array(z.string().trim().max(120)).optional(),
-  occasions: z.array(z.string().trim().max(60)).optional(),
-  deliveryInfo: z.string().trim().max(500).optional(),
-  isFeatured: z.boolean().optional(),
-  isPublished: z.boolean().optional(),
-}).strict();
+const createItemSchema = z
+  .object({
+    title: z.string().trim().min(2).max(120),
+    slug: z.string().trim().min(2).max(140).optional(),
+    description: z.string().trim().min(1).max(5000),
+    category: z.enum(ITEM_CATEGORIES),
+    images: z.array(itemImageSchema).min(1).max(6),
+    startingPrice: z.number().min(0).optional().nullable().default(null),
+    price: z.number().min(0).optional().nullable(), // alias
+    customizationOptions: z
+      .array(
+        z.union([
+          customizationOptionSchema,
+          z.string().transform((str) => ({ label: str, type: 'text' })),
+        ])
+      )
+      .optional()
+      .default([]),
+    occasionTags: z.array(z.string().trim().max(60)).optional().default([]),
+    occasions: z.array(z.string().trim().max(60)).optional(), // alias
+    prepTimeDays: z.number().int().min(0).max(60).optional().default(2),
+    isFeatured: z.boolean().optional().default(false),
+    isVisible: z.boolean().optional().default(true),
+    isPublished: z.boolean().optional(), // alias
+    deliveryInfo: z.string().optional(),
+    shortDescription: z.string().optional(),
+    includes: z.array(z.string()).optional(),
+  })
+  .strict();
 
-// GET /api/admin/gifts - List all gifts (including unpublished)
-router.get('/gifts', async (req, res, next) => {
+const updateItemSchema = createItemSchema.partial();
+
+// Normalize payload to conform to Item model
+function normalizeItemBody(body) {
+  const normalized = { ...body };
+  if (normalized.price !== undefined && normalized.startingPrice === undefined) {
+    normalized.startingPrice = normalized.price;
+  }
+  if (normalized.occasions !== undefined && normalized.occasionTags === undefined) {
+    normalized.occasionTags = normalized.occasions;
+  }
+  if (normalized.isPublished !== undefined && normalized.isVisible === undefined) {
+    normalized.isVisible = normalized.isPublished;
+  }
+  return normalized;
+}
+
+// GET /api/admin/items (and alias /api/admin/gifts)
+const listItemsHandler = async (req, res, next) => {
   try {
-    const gifts = await Gift.find().sort({ createdAt: -1 });
-    res.json({ gifts });
-  } catch (e) { next(e); }
-});
+    const items = await Item.find().sort({ createdAt: -1 });
+    const formatted = items.map(formatItemResponse);
+    res.json({ items: formatted, gifts: formatted });
+  } catch (e) {
+    next(e);
+  }
+};
+router.get('/items', listItemsHandler);
+router.get('/gifts', listItemsHandler);
 
-// POST /api/admin/gifts - Create a new gift
-router.post('/gifts', validateBody(createGiftSchema), async (req, res, next) => {
+// POST /api/admin/items (and alias /api/admin/gifts)
+const createItemHandler = async (req, res, next) => {
   try {
-    const baseSlug = req.body.slug ? slugify(req.body.slug) : slugify(req.body.title);
+    const normalized = normalizeItemBody(req.body);
+    const baseSlug = normalized.slug ? slugify(normalized.slug) : slugify(normalized.title);
     const uniqueSlug = await getUniqueSlug(baseSlug);
 
-    const gift = await Gift.create({
-      ...req.body,
+    const item = await Item.create({
+      ...normalized,
       slug: uniqueSlug,
     });
-    res.status(201).json({ gift });
-  } catch (e) { next(e); }
-});
+    const formatted = formatItemResponse(item);
+    res.status(201).json({ item: formatted, gift: formatted });
+  } catch (e) {
+    next(e);
+  }
+};
+router.post('/items', validateBody(createItemSchema), createItemHandler);
+router.post('/gifts', validateBody(createItemSchema), createItemHandler);
 
-// PUT /api/admin/gifts/:id - Update an existing gift
-router.put('/gifts/:id', validateBody(updateGiftSchema), async (req, res, next) => {
+// PUT /api/admin/items/:id (and alias /api/admin/gifts/:id)
+const updateItemHandler = async (req, res, next) => {
   try {
-    const gift = await Gift.findById(req.params.id);
-    if (!gift) return res.status(404).json({ error: 'Gift not found.' });
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Item not found.' });
 
-    let slug = gift.slug;
-    if (req.body.slug && req.body.slug !== gift.slug) {
-      slug = await getUniqueSlug(slugify(req.body.slug), gift._id);
-    } else if (req.body.title && req.body.title !== gift.title && !req.body.slug) {
-      slug = await getUniqueSlug(slugify(req.body.title), gift._id);
+    const normalized = normalizeItemBody(req.body);
+    let slug = item.slug;
+    if (normalized.slug && normalized.slug !== item.slug) {
+      slug = await getUniqueSlug(slugify(normalized.slug), item._id);
+    } else if (normalized.title && normalized.title !== item.title && !normalized.slug) {
+      slug = await getUniqueSlug(slugify(normalized.title), item._id);
     }
 
-    Object.assign(gift, req.body, { slug });
-    await gift.save();
-    res.json({ gift });
-  } catch (e) { next(e); }
-});
+    Object.assign(item, normalized, { slug });
+    await item.save();
+    const formatted = formatItemResponse(item);
+    res.json({ item: formatted, gift: formatted });
+  } catch (e) {
+    next(e);
+  }
+};
+router.put('/items/:id', validateBody(updateItemSchema), updateItemHandler);
+router.put('/gifts/:id', validateBody(updateItemSchema), updateItemHandler);
 
-// DELETE /api/admin/gifts/:id - Delete a gift and remove images from Cloudinary
-router.delete('/gifts/:id', async (req, res, next) => {
+// DELETE /api/admin/items/:id (and alias /api/admin/gifts/:id)
+const deleteItemHandler = async (req, res, next) => {
   try {
-    const gift = await Gift.findById(req.params.id);
-    if (!gift) return res.status(404).json({ error: 'Gift not found.' });
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Item not found.' });
 
-    // Delete associated Cloudinary images
-    if (Array.isArray(gift.images)) {
+    if (Array.isArray(item.images)) {
       await Promise.allSettled(
-        gift.images
+        item.images
           .filter((img) => img.publicId)
           .map((img) => deleteFromCloudinary(img.publicId))
       );
     }
 
-    await Gift.findByIdAndDelete(req.params.id);
+    await Item.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
-  } catch (e) { next(e); }
-});
+  } catch (e) {
+    next(e);
+  }
+};
+router.delete('/items/:id', deleteItemHandler);
+router.delete('/gifts/:id', deleteItemHandler);
 
-// POST /api/admin/gifts/upload - Upload an image to Cloudinary via multer memory storage
-router.post('/gifts/upload', (req, res, next) => {
+// POST /api/admin/items/upload (and alias /api/admin/gifts/upload)
+const uploadHandler = (req, res, next) => {
   uploadSingleImage(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ error: err.message || 'File upload failed.' });
@@ -168,12 +262,14 @@ router.post('/gifts/upload', (req, res, next) => {
     }
 
     try {
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
+      const uploadResult = await uploadToCloudinary(req.file.buffer, 'fouzas/items');
       res.status(201).json(uploadResult);
     } catch (uploadErr) {
       res.status(500).json({ error: uploadErr.message || 'Image upload to Cloudinary failed.' });
     }
   });
-});
+};
+router.post('/items/upload', uploadHandler);
+router.post('/gifts/upload', uploadHandler);
 
 export default router;

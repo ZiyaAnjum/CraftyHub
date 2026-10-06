@@ -19,6 +19,8 @@ export const requireRole = (...roles) => (req, res, next) => {
   next();
 };
 
+export const requireAdmin = requireRole('admin');
+
 // CSRF defence in depth: browsers cannot add a custom header cross-site without a CORS
 // preflight, and CORS only allows our own origin. Combined with SameSite cookies.
 export const requireCsrfHeader = (req, res, next) => {
