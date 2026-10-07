@@ -79,6 +79,7 @@ itemSchema.pre('validate', function (next) {
 });
 
 itemSchema.index({ isVisible: 1, createdAt: -1 });
+itemSchema.index({ isVisible: 1, isFeatured: -1, createdAt: -1, _id: -1 });
 itemSchema.index({ category: 1 });
 itemSchema.index({ occasionTags: 1 });
 

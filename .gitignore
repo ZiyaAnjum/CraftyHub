@@ -1,0 +1,4 @@
+# agent test artifacts and reports
+tmp-tests/
+TEST_REPORT_*.md
+MIGRATION_PLAN.md

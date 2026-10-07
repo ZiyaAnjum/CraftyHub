@@ -9,6 +9,19 @@ import { orderLimiter } from '../middleware/rateLimiters.js';
 
 const router = Router();
 
+const getStartOfTodayKolkata = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === 'year').value;
+  const m = parts.find((p) => p.type === 'month').value;
+  const d = parts.find((p) => p.type === 'day').value;
+  return new Date(`${y}-${m}-${d}T00:00:00.000+05:30`);
+};
+
 const createOrderSchema = z
   .object({
     item: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid item ID').optional().nullable(),
@@ -30,7 +43,22 @@ const createOrderSchema = z
       .max(5)
       .optional()
       .default([]),
-    neededByDate: z.coerce.date().optional().nullable(),
+    neededByDate: z
+      .any()
+      .transform((val, ctx) => {
+        if (val === null || val === undefined || val === '') return null;
+        const d = new Date(val);
+        if (isNaN(d.getTime()) || d < getStartOfTodayKolkata()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Needed-by date cannot be in the past',
+          });
+          return z.NEVER;
+        }
+        return d;
+      })
+      .optional()
+      .nullable(),
     // Backward compatibility fields from draft builder
     occasion: z.string().trim().max(60).optional(),
     budget: z.number().min(0).max(1000000).optional(),

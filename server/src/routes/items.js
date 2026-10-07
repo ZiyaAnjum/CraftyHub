@@ -66,7 +66,7 @@ router.get('/', async (req, res, next) => {
 
     const [items, total] = await Promise.all([
       Item.find(filter)
-        .sort({ createdAt: -1 })
+        .sort({ isFeatured: -1, createdAt: -1, _id: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
       Item.countDocuments(filter),
