@@ -24,7 +24,6 @@ router.get('/featured', async (req, res, next) => {
       .limit(8);
     res.json({
       items: items.map(formatItemResponse),
-      gifts: items.map(formatItemResponse), // alias for current frontend
     });
   } catch (err) {
     next(err);
@@ -76,7 +75,6 @@ router.get('/', async (req, res, next) => {
 
     res.json({
       items: formatted,
-      gifts: formatted, // alias for current frontend
       pagination: {
         page,
         limit,
@@ -101,7 +99,7 @@ router.get('/:slugOrId', async (req, res, next) => {
       return res.status(404).json({ error: 'Item not found.' });
     }
     const formatted = formatItemResponse(item);
-    res.json({ item: formatted, gift: formatted });
+    res.json({ item: formatted });
   } catch (err) {
     next(err);
   }

@@ -51,7 +51,6 @@ app.use('/api', globalLimiter, requireCsrfHeader);
 // API route registrations
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
-app.use('/api/gifts', itemRoutes); // backward compatibility alias
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 

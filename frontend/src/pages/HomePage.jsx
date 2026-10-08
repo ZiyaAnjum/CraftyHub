@@ -112,9 +112,9 @@ export function HomePage() {
     let isMounted = true;
     async function loadFeatured() {
       try {
-        const res = await api.get('/api/gifts/featured');
+        const res = await api.get('/api/items/featured');
         if (isMounted) {
-          setFeaturedGifts(res.gifts || []);
+          setFeaturedGifts(res.items || res.gifts || []);
         }
       } catch {
         // fail silently for home page featured

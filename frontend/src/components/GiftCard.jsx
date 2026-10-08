@@ -50,16 +50,29 @@ export function GiftCard({ gift }) {
 
       <div className="px-5 pb-5 pt-3 border-t border-stone-100 flex items-center justify-between">
         <div>
-          <span className="text-[10px] uppercase tracking-wider text-stone-400 block font-medium">
-            {gift.priceNote || 'Price'}
-          </span>
-          <span className="font-serif font-bold text-stone-900 text-lg">
-            ₹{Number(gift.price).toLocaleString('en-IN')}
-          </span>
+          {gift.startingPrice !== null && gift.startingPrice !== undefined && Number(gift.startingPrice) > 0 ? (
+            <>
+              <span className="text-[10px] uppercase tracking-wider text-stone-400 block font-medium">
+                {gift.priceNote || 'Starts from'}
+              </span>
+              <span className="font-serif font-bold text-stone-900 text-lg">
+                ₹{Number(gift.startingPrice).toLocaleString('en-IN')}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] uppercase tracking-wider text-stone-400 block font-medium">
+                Pricing
+              </span>
+              <span className="font-serif font-semibold text-stone-700 text-base">
+                Price on request
+              </span>
+            </>
+          )}
         </div>
 
         <Link
-          to={`/gifts/${gift.slug}`}
+          to={`/items/${gift.slug}`}
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blush-50 hover:bg-blush-100 text-blush-700 text-xs font-semibold transition-colors tap-target"
         >
           <span>View details</span>

@@ -70,9 +70,9 @@ export function ExplorePage() {
         queryParams.set('page', String(page));
         queryParams.set('limit', '12');
 
-        const res = await api.get(`/api/gifts?${queryParams.toString()}`);
+        const res = await api.get(`/api/items?${queryParams.toString()}`);
         if (isMounted) {
-          setGifts(res.gifts || []);
+          setGifts(res.items || res.gifts || []);
           if (res.pagination) {
             setPagination(res.pagination);
           }

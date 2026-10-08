@@ -41,7 +41,13 @@ const orderSchema = new mongoose.Schema(
     orderNumber: { type: String, unique: true, index: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
+    itemSnapshot: {
+      title: { type: String, default: '' },
+      image: { type: String, default: '' },
+    },
+    customizationAnswers: { type: [mongoose.Schema.Types.Mixed], default: [] },
     customer: { type: customerInfoSchema, required: true },
+    deliveryType: { type: String, enum: ['delivery', 'pickup'], default: 'delivery' },
     requirements: { type: String, trim: true, maxlength: 2000, default: '' },
     referenceImages: { type: [referenceImageSchema], default: [] },
     neededByDate: { type: Date, default: null },

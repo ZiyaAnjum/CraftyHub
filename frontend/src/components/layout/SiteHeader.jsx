@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import { Flower2, Search, User, Package, ArrowRight, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getShopWhatsAppUrl } from '../../lib/whatsapp';
 
 export function SiteHeader() {
   const { user } = useAuth();
@@ -69,18 +70,15 @@ export function SiteHeader() {
     { to: '/', label: 'Home', end: true },
     { to: '/explore', label: 'Explore' },
     { to: '/create', label: 'Create' },
-    { to: '/orders', label: 'Track' },
+    { to: '/track', label: 'Track' },
   ];
 
   if (user?.role === 'admin') {
-    navLinks.push({ to: '/admin/gifts', label: 'Admin' });
+    navLinks.push({ to: '/admin/orders', label: 'Admin' });
   }
 
-  const rawWhatsApp = import.meta.env.VITE_WHATSAPP_NUMBER;
-  const whatsappUrl = rawWhatsApp
-    ? `https://wa.me/${rawWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent('Hello Fouzas Creation, I would like to enquire about bespoke gifts.')}`
-    : '/explore';
-  const isWhatsAppExternal = Boolean(rawWhatsApp);
+  const whatsappUrl = getShopWhatsAppUrl('Hello Fouzas Creation, I would like to enquire about bespoke gifts.');
+  const isWhatsAppExternal = whatsappUrl !== '#';
 
   return (
     <>

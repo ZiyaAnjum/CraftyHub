@@ -160,6 +160,11 @@ const SAMPLE_ITEMS = [
 ];
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Cannot run seed script in production environment.');
+    process.exit(1);
+  }
+
   try {
     await mongoose.connect(env.MONGO_URI);
     console.log('Connected to MongoDB for item seeding.');

@@ -12,10 +12,12 @@ import {
   Gift,
   ArrowRight,
   AlertCircle,
-  Clock
+  Clock,
+  MessageCircle,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { Skeleton } from '../components/Skeleton';
+import { getShopWhatsAppUrl } from '../lib/whatsapp';
 
 export function GiftDetailPage() {
   const shouldReduceMotion = useReducedMotion();
@@ -36,10 +38,11 @@ export function GiftDetailPage() {
 
     async function fetchGift() {
       try {
-        const data = await api.get(`/api/gifts/${slug}`);
+        const data = await api.get(`/api/items/${slug}`);
         if (isMounted) {
-          if (data?.gift) {
-            setGift(data.gift);
+          const item = data?.item || data?.gift;
+          if (item) {
+            setGift(item);
           } else {
             setNotFound(true);
           }
@@ -146,7 +149,9 @@ export function GiftDetailPage() {
   const activeImage = images[activeImageIndex] || images[0];
 
   const primaryOccasion = gift.occasions?.[0] || 'Birthday';
-  const customizeUrl = `/create?title=${encodeURIComponent(gift.title)}&occasion=${encodeURIComponent(primaryOccasion)}`;
+  const customizeUrl = `/create?item=${gift._id || ''}`;
+  const whatsappMessage = `Hello Fouzas Creation! I'd love to enquire about customizing "${gift.title}".`;
+  const whatsappUrl = getShopWhatsAppUrl(whatsappMessage);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 pb-32 md:pb-10">
@@ -240,15 +245,30 @@ export function GiftDetailPage() {
           {/* Price Box */}
           <div className="p-4 rounded-2xl bg-cream-100/70 border border-gold-200/60 flex items-baseline justify-between">
             <div>
-              <span className="text-xs font-medium uppercase tracking-wider text-stone-500 block">
-                {gift.priceNote || 'Base Price'}
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="font-serif text-3xl font-bold text-stone-900">
-                  ₹{Number(gift.price).toLocaleString('en-IN')}
-                </span>
-                <span className="text-xs text-stone-400">INR</span>
-              </div>
+              {gift.startingPrice !== null && gift.startingPrice !== undefined && Number(gift.startingPrice) > 0 ? (
+                <>
+                  <span className="text-xs font-medium uppercase tracking-wider text-stone-500 block">
+                    {gift.priceNote || 'Starting Price'}
+                  </span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <span className="font-serif text-3xl font-bold text-stone-900">
+                      ₹{Number(gift.startingPrice).toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs text-stone-400">INR</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs font-medium uppercase tracking-wider text-stone-500 block">
+                    Bespoke Pricing
+                  </span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <span className="font-serif text-2xl font-bold text-stone-900">
+                      Price on request
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
             <span className="text-xs text-stone-500 bg-white px-2.5 py-1 rounded-lg border border-stone-200/80 shadow-xs">
               Handcrafted on Order
@@ -256,14 +276,28 @@ export function GiftDetailPage() {
           </div>
 
           {/* Primary Action Button */}
-          <Link
-            to={customizeUrl}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-blush-500 via-blush-600 to-rose-600 hover:from-blush-600 hover:to-rose-700 text-white font-semibold text-base shadow-elevated transition-all flex items-center justify-center gap-2 tap-target transform active:scale-98"
-          >
-            <Gift className="w-5 h-5 text-gold-300" />
-            <span>Customize this gift</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Link>
+          <div className="space-y-3">
+            <Link
+              to={customizeUrl}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blush-500 via-blush-600 to-rose-600 hover:from-blush-600 hover:to-rose-700 text-white font-semibold text-base shadow-elevated transition-all flex items-center justify-center gap-2 tap-target transform active:scale-98"
+            >
+              <Gift className="w-5 h-5 text-gold-300" />
+              <span>Customize this gift</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Link>
+
+            {whatsappUrl && whatsappUrl !== '#' && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-semibold text-sm transition-colors flex items-center justify-center gap-2 tap-target"
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-600" />
+                <span>Enquire on WhatsApp</span>
+              </a>
+            )}
+          </div>
 
           {/* Full Description */}
           {gift.description && (
@@ -365,16 +399,29 @@ export function GiftDetailPage() {
               {gift.priceNote || 'Starts from'}
             </span>
             <span className="font-serif font-bold text-stone-900 text-base">
-              ₹{Number(gift.price).toLocaleString('en-IN')}
+              {gift.startingPrice ? `₹${Number(gift.startingPrice).toLocaleString('en-IN')}` : 'Price on request'}
             </span>
           </div>
-          <Link
-            to={customizeUrl}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blush-500 to-rose-600 text-white text-xs font-semibold shadow-soft flex items-center justify-center gap-1.5 active:scale-98 transition-transform"
-          >
-            <Gift className="w-4 h-4 text-gold-200" />
-            <span>Customize this gift</span>
-          </Link>
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            {whatsappUrl && whatsappUrl !== '#' && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Enquire on WhatsApp"
+                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 tap-target"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </a>
+            )}
+            <Link
+              to={customizeUrl}
+              className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-blush-500 to-rose-600 text-white text-xs font-semibold shadow-soft flex items-center justify-center gap-1.5 active:scale-98 transition-transform"
+            >
+              <Gift className="w-4 h-4 text-gold-200" />
+              <span>Customize</span>
+            </Link>
+          </div>
         </div>
       </motion.div>
     </div>

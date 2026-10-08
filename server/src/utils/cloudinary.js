@@ -9,7 +9,7 @@ if (env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SE
   });
 }
 
-export async function uploadToCloudinary(buffer, folder = 'fouzas/gifts') {
+export async function uploadToCloudinary(buffer, folder = 'fouzas/items') {
   if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
     throw new Error('Cloudinary credentials are not configured on the server.');
   }

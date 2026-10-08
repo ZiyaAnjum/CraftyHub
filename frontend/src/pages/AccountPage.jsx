@@ -95,7 +95,7 @@ export function AccountPage() {
         {user.role === 'admin' && (
           <div className="pt-2">
             <Link
-              to="/admin/gifts"
+              to="/admin/items"
               className="p-4 rounded-2xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100/60 transition-all flex items-center justify-between group tap-target shadow-xs"
             >
               <div className="flex items-center gap-3">

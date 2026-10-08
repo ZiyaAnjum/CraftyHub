@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export function RequireAuth({ children }) {
+export function RequireAuth({ adminOnly = false, children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -22,8 +22,17 @@ export function RequireAuth({ children }) {
 
   if (!user) {
     const currentPath = location.pathname + location.search;
-    return <Navigate to={`/signin?next=${encodeURIComponent(currentPath)}`} replace />;
+    const loginTarget = adminOnly ? '/admin/login' : '/signin';
+    return <Navigate to={`${loginTarget}?next=${encodeURIComponent(currentPath)}`} replace />;
+  }
+
+  if (adminOnly && user.role !== 'admin') {
+    return <Navigate to="/admin/login?error=unauthorized" replace />;
   }
 
   return children ? children : <Outlet />;
+}
+
+export function RequireAdmin({ children }) {
+  return <RequireAuth adminOnly={true}>{children}</RequireAuth>;
 }

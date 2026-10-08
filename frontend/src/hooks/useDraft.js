@@ -1,20 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 const DRAFT_STORAGE_KEY = 'fc_draft_order';
 
 const DEFAULT_DRAFT = {
-  occasion: 'Birthday',
-  budget: 2000,
-  recipient: '',
-  items: [{ name: 'Customized Gift Box', qty: 1 }],
-  customization: {
-    text: 'Happy Birthday!',
-    font: 'Elegant Serif',
-    colour: 'Blush & Gold',
-    theme: 'Floral Romance',
-    notes: '',
-  },
-  preferredDate: '',
+  selectedItemId: '',
+  customizationAnswers: {},
+  requirements: '',
+  referenceImages: [],
+  neededByDate: '',
+  phone: '',
+  deliveryType: 'delivery',
+  address: '',
   lastUpdated: null,
 };
 
@@ -57,9 +53,9 @@ export function useDraft() {
       const updated = {
         ...prev,
         ...patch,
-        customization: {
-          ...prev.customization,
-          ...(patch.customization || {}),
+        customizationAnswers: {
+          ...prev.customizationAnswers,
+          ...(patch.customizationAnswers || {}),
         },
         lastUpdated: new Date().toISOString(),
       };
