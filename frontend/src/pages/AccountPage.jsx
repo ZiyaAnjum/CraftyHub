@@ -103,8 +103,8 @@ export function AccountPage() {
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-sm font-bold text-purple-950 block">Manage Gift Catalog</span>
-                  <span className="text-xs text-purple-700">Add, edit, publish & manage gift items</span>
+                  <span className="text-sm font-bold text-purple-950 block">Manage Items Catalogue</span>
+                  <span className="text-xs text-purple-700">Add, edit, publish & manage bespoke items</span>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-purple-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition-all" />

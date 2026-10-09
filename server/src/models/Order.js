@@ -79,4 +79,9 @@ orderSchema.pre('validate', async function (next) {
   next();
 });
 
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ readyBy: 1 });
+
 export const Order = mongoose.model('Order', orderSchema);

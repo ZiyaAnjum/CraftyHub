@@ -6,6 +6,7 @@ import { RefreshToken } from '../models/RefreshToken.js';
 import { validateBody } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
 import { authLimiter, refreshLimiter } from '../middleware/rateLimiters.js';
+import { isProd } from '../config/env.js';
 import {
   signAccessToken, newRefreshToken, hashToken, setAuthCookies, clearAuthCookies, REFRESH_TTL_MS,
 } from '../utils/tokens.js';
@@ -40,8 +41,10 @@ const publicUser = (u) => ({ id: u._id, name: u.name, email: u.email, phone: u.p
 
 async function startSession(res, user) {
   const refresh = newRefreshToken();
+  const access = signAccessToken(user);
   await RefreshToken.create({ user: user._id, tokenHash: hashToken(refresh), expiresAt: new Date(Date.now() + REFRESH_TTL_MS) });
-  setAuthCookies(res, signAccessToken(user), refresh);
+  setAuthCookies(res, access, refresh);
+  return { access, refresh };
 }
 
 router.post('/register', authLimiter, validateBody(registerSchema), async (req, res, next) => {
@@ -77,6 +80,17 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req, res, n
           await User.updateOne({ _id: user._id }, { $set: { lockUntil: new Date(Date.now() + LOCK_MS), failedLoginCount: 0 } });
         }
       }
+      if (isProd) {
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'auth_login_failed',
+            timestamp: new Date().toISOString(),
+            ip: req.ip,
+            reason: user ? 'invalid_password' : 'unknown_email',
+          })
+        );
+      }
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
@@ -87,12 +101,38 @@ router.post('/login', authLimiter, validateBody(loginSchema), async (req, res, n
 });
 
 // Rotating refresh tokens with reuse detection
-router.post('/refresh', refreshLimiter, async (req, res, next) => {
+router.post('/refresh', refreshLimiter, async (req, res) => {
   try {
     const raw = req.cookies?.fc_rt;
-    if (!raw) return res.status(401).json({ error: 'Please sign in.' });
+    if (!raw || typeof raw !== 'string' || !raw.trim()) {
+      clearAuthCookies(res);
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'auth_refresh_failed',
+          reason: 'missing_cookie',
+          ip: req.ip,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return res.status(401).json({ error: 'Please sign in.' });
+    }
 
     const tokenHash = hashToken(raw);
+    if (!tokenHash) {
+      clearAuthCookies(res);
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'auth_refresh_failed',
+          reason: 'malformed_token',
+          ip: req.ip,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return res.status(401).json({ error: 'Please sign in.' });
+    }
+
     const record = await RefreshToken.findOneAndUpdate(
       { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
       { $set: { revokedAt: new Date() } },
@@ -104,23 +144,77 @@ router.post('/refresh', refreshLimiter, async (req, res, next) => {
       if (revokedRecord?.revokedAt) {
         const age = Date.now() - revokedRecord.revokedAt.getTime();
         if (age < 10_000) {
-          return res.status(401).json({ error: 'Please retry.' });
+          clearAuthCookies(res);
+          console.warn(
+            JSON.stringify({
+              level: 'warn',
+              event: 'auth_refresh_failed',
+              reason: 'grace_period_exhausted',
+              ip: req.ip,
+              timestamp: new Date().toISOString(),
+            })
+          );
+          return res.status(401).json({ error: 'Please sign in.' });
         }
         // A used token came back: possible theft. Revoke every session for this user.
         await RefreshToken.updateMany({ user: revokedRecord.user, revokedAt: null }, { $set: { revokedAt: new Date() } });
         clearAuthCookies(res);
-        return res.status(401).json({ error: 'Please sign in again.' });
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'auth_refresh_failed',
+            reason: 'token_reuse',
+            ip: req.ip,
+            timestamp: new Date().toISOString(),
+          })
+        );
+        return res.status(401).json({ error: 'Please sign in.' });
       }
+
+      const isExpired = revokedRecord && revokedRecord.expiresAt && revokedRecord.expiresAt <= new Date();
       clearAuthCookies(res);
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'auth_refresh_failed',
+          reason: isExpired ? 'expired_token' : 'invalid_token',
+          ip: req.ip,
+          timestamp: new Date().toISOString(),
+        })
+      );
       return res.status(401).json({ error: 'Please sign in.' });
     }
 
     const user = await User.findById(record.user);
-    if (!user) { clearAuthCookies(res); return res.status(401).json({ error: 'Please sign in.' }); }
+    if (!user) {
+      clearAuthCookies(res);
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'auth_refresh_failed',
+          reason: 'user_not_found',
+          ip: req.ip,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      return res.status(401).json({ error: 'Please sign in.' });
+    }
 
-    await startSession(res, user);
-    res.json({ user: publicUser(user) });
-  } catch (e) { next(e); }
+    const { access } = await startSession(res, user);
+    res.json({ user: publicUser(user), accessToken: access });
+  } catch (e) {
+    clearAuthCookies(res);
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'auth_refresh_failed',
+        reason: 'unexpected_error',
+        ip: req.ip,
+        timestamp: new Date().toISOString(),
+      })
+    );
+    return res.status(401).json({ error: 'Please sign in.' });
+  }
 });
 
 router.post('/logout', async (req, res, next) => {

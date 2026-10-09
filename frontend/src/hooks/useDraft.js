@@ -17,6 +17,9 @@ const DEFAULT_DRAFT = {
 export function clearDraftStorage() {
   try {
     sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    sessionStorage.removeItem('fc_order_draft');
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    localStorage.removeItem('fc_order_draft');
   } catch {
     // Ignore
   }

@@ -17,6 +17,7 @@ import { api, ApiError } from '../lib/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatKolkataDateTime, formatKolkataDate } from '../lib/date';
 import { getShopWhatsAppUrl } from '../lib/whatsapp';
+import { useNoIndex } from '../hooks/useNoIndex';
 
 const ORDER_STEPS = [
   { key: 'placed', label: 'Placed', desc: 'Order received' },
@@ -27,6 +28,7 @@ const ORDER_STEPS = [
 ];
 
 export function TrackPage() {
+  useNoIndex();
   const shouldReduceMotion = useReducedMotion();
   const [searchParams] = useSearchParams();
 

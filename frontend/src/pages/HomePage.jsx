@@ -16,10 +16,10 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { api } from '../lib/api';
-import { stagger, fadeUp } from '../lib/motion';
-import { GiftCard } from '../components/GiftCard';
-import { GiftCardSkeleton } from '../components/Skeleton';
+import { ItemCard } from '../components/ItemCard';
+import { ItemCardSkeleton } from '../components/Skeleton';
 import { Hero } from '../components/home/Hero';
+import { stagger, fadeUp } from '../lib/motion';
 
 const OCCASIONS = [
   {
@@ -105,7 +105,7 @@ const SHOP_CATEGORIES = [
 
 export function HomePage() {
   const shouldReduceMotion = useReducedMotion();
-  const [featuredGifts, setFeaturedGifts] = useState([]);
+  const [featuredItems, setFeaturedItems] = useState([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export function HomePage() {
       try {
         const res = await api.get('/api/items/featured');
         if (isMounted) {
-          setFeaturedGifts(res.items || res.gifts || []);
+          setFeaturedItems(res.items || []);
         }
       } catch {
         // fail silently for home page featured
@@ -148,58 +148,52 @@ export function HomePage() {
       <Hero />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-14 sm:space-y-20">
-        {/* 2. Featured Gifts Grid */}
-        <section id="home-featured-section" className="space-y-6 pt-4">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-gold-600 font-semibold mb-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Handpicked Creations</span>
+        {/* 2. Featured Creations Grid (shows nothing when there are no featured items) */}
+        {(loadingFeatured || featuredItems.length > 0) && (
+          <section id="home-featured-section" className="space-y-6 pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-gold-600 font-semibold mb-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Handpicked Creations</span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
+                  Featured Creations
+                </h2>
+              </div>
+
+              <Link
+                to="/explore"
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-rose-600 hover:text-rose-700 transition-colors group"
+              >
+                <span>View Full Catalog</span>
+                <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900">
-              Featured Gifts
-            </h2>
-          </div>
 
-          <Link
-            to="/explore"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-blush-600 hover:text-blush-700 transition-colors group"
-          >
-            <span>View All Gifts</span>
-            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
-
-        {loadingFeatured ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <GiftCardSkeleton />
-            <GiftCardSkeleton />
-            <GiftCardSkeleton />
-          </div>
-        ) : featuredGifts.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-white border border-stone-200/80 text-center text-sm text-stone-500">
-            Check out our{' '}
-            <Link to="/explore" className="text-blush-600 font-semibold underline">
-              full catalog
-            </Link>{' '}
-            for all handcrafted designs.
-          </div>
-        ) : (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-20px' }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {featuredGifts.map((gift) => (
-              <motion.div key={gift._id} variants={itemVariants}>
-                <GiftCard gift={gift} />
+            {loadingFeatured ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <ItemCardSkeleton />
+                <ItemCardSkeleton />
+                <ItemCardSkeleton />
+              </div>
+            ) : (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-20px' }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                {featuredItems.map((item) => (
+                  <motion.div key={item._id || item.id} variants={itemVariants}>
+                    <ItemCard item={item} />
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
+            )}
+          </section>
         )}
-      </section>
 
       {/* 3. Shop by Category Tiles */}
       <section className="space-y-6">

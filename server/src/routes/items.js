@@ -63,9 +63,21 @@ router.get('/', async (req, res, next) => {
       ];
     }
 
+    let sortOption = { isFeatured: -1, createdAt: -1, _id: -1 };
+    const sortParam = req.query.sort;
+    if (sortParam === 'newest') {
+      sortOption = { createdAt: -1, _id: -1 };
+    } else if (sortParam === 'price_asc') {
+      sortOption = { startingPrice: 1, createdAt: -1 };
+    } else if (sortParam === 'price_desc') {
+      sortOption = { startingPrice: -1, createdAt: -1 };
+    } else if (sortParam === 'featured') {
+      sortOption = { isFeatured: -1, createdAt: -1, _id: -1 };
+    }
+
     const [items, total] = await Promise.all([
       Item.find(filter)
-        .sort({ isFeatured: -1, createdAt: -1, _id: -1 })
+        .sort(sortOption)
         .skip((page - 1) * limit)
         .limit(limit),
       Item.countDocuments(filter),

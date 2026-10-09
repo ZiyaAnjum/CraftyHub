@@ -12,21 +12,24 @@ import authRoutes from './routes/auth.js';
 import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import itemRoutes from './routes/items.js';
+import previewRoutes from './routes/previews.js';
 
 const app = express();
 
-app.set('trust proxy', 1); // behind Render/Vercel proxy: needed for correct client IPs in rate limiting
+// Trust proxy configured via environment (depth 1 for Render / Heroku / Vercel upstream proxies)
+const trustProxy = /^\d+$/.test(env.TRUST_PROXY) ? parseInt(env.TRUST_PROXY, 10) : env.TRUST_PROXY;
+app.set('trust proxy', trustProxy);
 app.disable('x-powered-by');
 
-// Security headers (Helmet)
+// Strict Security headers (Helmet) - API serves JSON only by default
 app.use(
   helmet({
-    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } }, // API serves JSON only
+    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
     hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
   })
 );
 
-// CORS restricted to frontend origin
+// CORS restricted strictly to frontend origin with credentials enabled
 app.use(
   cors({
     origin: (origin, cb) =>
@@ -43,9 +46,16 @@ app.use(cookieParser());
 app.use(mongoSanitize());
 app.use(hpp());
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+// Health endpoint - No sensitive information
+app.get('/api/health', (req, res) =>
+  res.json({ status: 'ok', uptime: Math.floor(process.uptime()) })
+);
 
-// Global rate limiting & CSRF header verification
+// Share preview route for social crawlers (WhatsApp, Facebook, Instagram, Twitter)
+// Crawlers get Open Graph HTML; regular browsers fall through via next()
+app.use(previewRoutes);
+
+// Global rate limiting & CSRF header verification for state-changing routes
 app.use('/api', globalLimiter, requireCsrfHeader);
 
 // API route registrations

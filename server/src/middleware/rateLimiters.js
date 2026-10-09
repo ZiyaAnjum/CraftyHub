@@ -17,4 +17,23 @@ export const orderUserLimiter = rateLimit({
   message: { error: 'Too many orders submitted. Please try again later.' },
 });
 
-export const trackLimiter = make(15 * 60 * 1000, 30, 'Too many tracking attempts. Please try again in a few minutes.');
+export const trackLimiter = make(15 * 60 * 1000, 10, 'Too many tracking attempts. Please try again in a few minutes.');
+
+export const getTrackOrderKey = (req) => {
+  const raw = req.body?.orderNumber;
+  const orderKey = typeof raw === 'string' && raw.trim() ? raw.trim().toUpperCase() : 'UNKNOWN';
+  return `${req.ip}_track_${orderKey}`;
+};
+
+// Per order failure limit: 5 failed attempts per hour keyed on IP + order number
+// (so a stranger cannot lock a real customer out of tracking)
+export const trackOrderNumberLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  keyGenerator: getTrackOrderKey,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  statusCode: 404,
+  message: { error: 'No order found with those details' },
+});

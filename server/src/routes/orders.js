@@ -5,7 +5,7 @@ import { User } from '../models/User.js';
 import { Item } from '../models/Item.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
-import { orderLimiter, orderUserLimiter, trackLimiter } from '../middleware/rateLimiters.js';
+import { orderLimiter, orderUserLimiter, trackLimiter, trackOrderNumberLimiter } from '../middleware/rateLimiters.js';
 import { uploadSingleImage } from '../middleware/upload.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js';
 
@@ -142,10 +142,10 @@ router.post(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(401).json({ error: 'Please sign in to continue.' });
 
-      // Cap open orders per user at 10
+      // Cap open orders per user at 10 (counting only active orders: placed, confirmed, in_progress, ready)
       const openOrdersCount = await Order.countDocuments({
         user: user._id,
-        status: { $nin: ['delivered', 'cancelled'] },
+        status: { $in: ['placed', 'confirmed', 'in_progress', 'ready'] },
       });
       if (openOrdersCount >= 10) {
         return res.status(400).json({
@@ -239,7 +239,7 @@ router.post('/upload', requireAuth, (req, res, next) => {
     }
 
     try {
-      const uploadResult = await uploadToCloudinary(req.file.buffer, 'fouzas/orders');
+      const uploadResult = await uploadToCloudinary(req.file.buffer, `fouzas/orders/${req.user.id}`);
       res.status(201).json(uploadResult);
     } catch (uploadErr) {
       res.status(500).json({ error: uploadErr.message || 'Image upload failed.' });
@@ -254,9 +254,10 @@ router.delete('/upload', requireAuth, async (req, res, next) => {
     if (!publicId || typeof publicId !== 'string') {
       return res.status(400).json({ error: 'publicId is required.' });
     }
-    // Security check: only permit deleting assets under fouzas/orders
-    if (!publicId.startsWith('fouzas/orders')) {
-      return res.status(403).json({ error: 'Cannot delete assets outside orders directory.' });
+    // Security check: user may only delete images they uploaded themselves
+    const userPrefix = `fouzas/orders/${req.user.id}/`;
+    if (!publicId.startsWith(userPrefix)) {
+      return res.status(403).json({ error: 'Cannot delete images you did not upload.' });
     }
     await deleteFromCloudinary(publicId);
     res.json({ ok: true });
@@ -286,7 +287,7 @@ const trackSchema = z
   })
   .strict();
 
-router.post('/track', trackLimiter, validateBody(trackSchema), async (req, res, next) => {
+router.post('/track', trackLimiter, trackOrderNumberLimiter, validateBody(trackSchema), async (req, res, next) => {
   try {
     const cleanPhone = normalizePhone(req.body.phone);
     const orderNum = req.body.orderNumber.trim();
@@ -349,7 +350,7 @@ router.get('/:orderNumberOrId', requireAuth, async (req, res, next) => {
   }
 });
 
-// 6. PATCH /api/orders/:orderNumberOrId/cancel - Customer cancels own order if status is 'placed'
+// 6. PATCH /api/orders/:orderNumberOrId/cancel - Customer cancels own order atomically if status is 'placed'
 router.patch('/:orderNumberOrId/cancel', requireAuth, async (req, res, next) => {
   try {
     const query = req.params.orderNumberOrId;
@@ -363,26 +364,40 @@ router.patch('/:orderNumberOrId/cancel', requireAuth, async (req, res, next) => 
       return res.status(404).json({ error: 'Order not found.' });
     }
 
-    const order = await Order.findOne(filter);
-    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    const existing = await Order.findOne(filter);
+    if (!existing) return res.status(404).json({ error: 'Order not found.' });
 
-    if (order.status !== 'placed') {
+    if (existing.status !== 'placed') {
       return res.status(400).json({
         error:
           'Orders can only be cancelled while in placed status. For updates on confirmed or in-progress orders, please contact us on WhatsApp.',
       });
     }
 
-    order.status = 'cancelled';
-    order.statusHistory.push({
-      status: 'cancelled',
-      changedAt: new Date(),
-      note: 'Cancelled by customer',
-    });
-    await order.save();
+    // Atomic update matching status: 'placed' so it cannot race with an admin confirming
+    const order = await Order.findOneAndUpdate(
+      { ...filter, status: 'placed' },
+      {
+        $set: { status: 'cancelled' },
+        $push: {
+          statusHistory: {
+            status: 'cancelled',
+            changedAt: new Date(),
+            note: 'Cancelled by customer',
+          },
+        },
+      },
+      { new: true }
+    ).populate('item', 'title category startingPrice images');
 
-    const populated = await Order.findById(order._id).populate('item', 'title category startingPrice images');
-    res.json({ order: clientOrderView(populated) });
+    if (!order) {
+      return res.status(400).json({
+        error:
+          'Orders can only be cancelled while in placed status. For updates on confirmed or in-progress orders, please contact us on WhatsApp.',
+      });
+    }
+
+    res.json({ order: clientOrderView(order) });
   } catch (err) {
     next(err);
   }

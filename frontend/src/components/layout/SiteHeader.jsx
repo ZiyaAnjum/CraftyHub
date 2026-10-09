@@ -74,7 +74,7 @@ export function SiteHeader() {
   ];
 
   if (user?.role === 'admin') {
-    navLinks.push({ to: '/admin/orders', label: 'Admin' });
+    navLinks.push({ to: '/admin/dashboard', label: 'Admin' });
   }
 
   const whatsappUrl = getShopWhatsAppUrl('Hello Fouzas Creation, I would like to enquire about bespoke gifts.');
@@ -154,7 +154,7 @@ export function SiteHeader() {
             {/* Search Button */}
             <Link
               to="/explore"
-              aria-label="Search gifts catalog"
+              aria-label="Search creations catalogue"
               className={`p-2 rounded-full tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
                 isSolid
                   ? 'text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'

@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/api';
 import { ShieldCheck, Mail, Lock, AlertCircle, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { useNoIndex } from '../hooks/useNoIndex';
 
 export function AdminLoginPage() {
+  useNoIndex();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, login, logout } = useAuth();

@@ -13,8 +13,10 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useNoIndex } from '../../hooks/useNoIndex';
 
 export function AdminLayout() {
+  useNoIndex();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -41,7 +43,7 @@ export function AdminLayout() {
       to: '/admin/items',
       label: 'Catalogue Items',
       icon: Package,
-      description: 'Manage gifts, pricing & visibility',
+      description: 'Manage items, pricing & visibility',
     },
   ];
 

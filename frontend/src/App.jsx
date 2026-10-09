@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { RequireAuth, RequireAdmin } from './components/RequireAuth';
 import { AdminLayout } from './components/layout/AdminLayout';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Customer Storefront Pages (eager loaded for snappy user navigation)
 import { HomePage } from './pages/HomePage';
 import { ExplorePage } from './pages/ExplorePage';
 import { CreatePage } from './pages/CreatePage';
@@ -11,12 +14,38 @@ import { TrackPage } from './pages/TrackPage';
 import { AccountPage } from './pages/AccountPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
-import { GiftDetailPage } from './pages/GiftDetailPage';
-import { AdminItemsPage } from './pages/AdminItemsPage';
-import { AdminLoginPage } from './pages/AdminLoginPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { AdminOrdersPage } from './pages/AdminOrdersPage';
-import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage';
+import { ItemDetailPage } from './pages/ItemDetailPage';
+
+// Admin Pages (Lazy loaded with React.lazy + Suspense so customers never download admin code)
+const AdminDashboardPage = React.lazy(() =>
+  import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+);
+const AdminOrdersPage = React.lazy(() =>
+  import('./pages/AdminOrdersPage').then((m) => ({ default: m.AdminOrdersPage }))
+);
+const AdminOrderDetailPage = React.lazy(() =>
+  import('./pages/AdminOrderDetailPage').then((m) => ({ default: m.AdminOrderDetailPage }))
+);
+const AdminItemsPage = React.lazy(() =>
+  import('./pages/AdminItemsPage').then((m) => ({ default: m.AdminItemsPage }))
+);
+const AdminLoginPage = React.lazy(() =>
+  import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage }))
+);
+const NotFoundPage = React.lazy(() =>
+  import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage }))
+);
+
+function AdminLoadingFallback() {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center p-8">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-stone-200 border-t-gold-500 animate-spin" />
+        <span className="text-xs font-medium text-stone-500">Loading portal...</span>
+      </div>
+    </div>
+  );
+}
 
 function LegacyGiftRedirect() {
   const { slug } = useParams();
@@ -25,47 +54,91 @@ function LegacyGiftRedirect() {
 
 export default function App() {
   return (
-    <Routes>
-      {/* Public Storefront Routes */}
-      <Route path="/" element={<Layout />}>
-        <Route index element={<HomePage />} />
-        <Route path="explore" element={<ExplorePage />} />
-        <Route path="gifts/:slug" element={<LegacyGiftRedirect />} />
-        <Route path="items/:slug" element={<GiftDetailPage />} />
-        <Route path="create" element={<CreatePage />} />
-        <Route path="track" element={<TrackPage />} />
-        <Route path="signin" element={<SignInPage />} />
-        <Route path="signup" element={<SignUpPage />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* Public Storefront Routes */}
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="explore" element={<ExplorePage />} />
+          <Route path="gifts/:slug" element={<LegacyGiftRedirect />} />
+          <Route path="items/:slug" element={<ItemDetailPage />} />
+          <Route path="create" element={<CreatePage />} />
+          <Route path="track" element={<TrackPage />} />
+          <Route path="signin" element={<SignInPage />} />
+          <Route path="login" element={<Navigate to="/signin" replace />} />
+          <Route path="signup" element={<SignUpPage />} />
 
-        {/* Protected Customer Routes */}
-        <Route element={<RequireAuth />}>
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="account" element={<AccountPage />} />
+          {/* Protected Customer Routes */}
+          <Route element={<RequireAuth />}>
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="account" element={<AccountPage />} />
+          </Route>
+
+          {/* 404 Catch-all route within customer layout */}
+          <Route
+            path="*"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <NotFoundPage />
+              </Suspense>
+            }
+          />
         </Route>
-      </Route>
 
-      {/* Admin Login (Standalone) */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+        {/* Admin Login (Standalone) */}
+        <Route
+          path="/admin/login"
+          element={
+            <Suspense fallback={<AdminLoadingFallback />}>
+              <AdminLoginPage />
+            </Suspense>
+          }
+        />
 
-      {/* Protected Admin Routes */}
-      <Route
-        path="/admin"
-        element={
-          <RequireAdmin>
-            <AdminLayout />
-          </RequireAdmin>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboardPage />} />
-        <Route path="orders" element={<AdminOrdersPage />} />
-        <Route path="orders/:orderNumber" element={<AdminOrderDetailPage />} />
-        <Route path="items" element={<AdminItemsPage />} />
-        <Route path="gifts" element={<Navigate to="/admin/items" replace />} />
-      </Route>
-
-      {/* Catch-all Route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Protected Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <RequireAdmin>
+              <AdminLayout />
+            </RequireAdmin>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route
+            path="dashboard"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <AdminDashboardPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="orders"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <AdminOrdersPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="orders/:orderNumber"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <AdminOrderDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="items"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <AdminItemsPage />
+              </Suspense>
+            }
+          />
+        </Route>
+      </Routes>
+    </ErrorBoundary>
   );
 }

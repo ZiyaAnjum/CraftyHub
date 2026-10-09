@@ -160,7 +160,7 @@ const SAMPLE_ITEMS = [
 ];
 
 async function seed() {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' || env.NODE_ENV === 'production') {
     console.error('Cannot run seed script in production environment.');
     process.exit(1);
   }

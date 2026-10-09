@@ -11,7 +11,6 @@
     "start": "node src/server.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:items": "node src/scripts/seedItems.js",
-    "seed:gifts": "node src/scripts/seedItems.js",
     "audit": "npm audit --omit=dev"
   },
   "dependencies": {

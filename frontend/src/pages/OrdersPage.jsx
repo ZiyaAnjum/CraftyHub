@@ -23,6 +23,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { OrderCardSkeleton } from '../components/Skeleton';
 import { formatKolkataDateTime, formatKolkataDate } from '../lib/date';
 import { getShopWhatsAppUrl } from '../lib/whatsapp';
+import { useNoIndex } from '../hooks/useNoIndex';
 
 const STATUS_STEPS = [
   { key: 'placed', label: 'Placed' },
@@ -33,6 +34,7 @@ const STATUS_STEPS = [
 ];
 
 export function OrdersPage() {
+  useNoIndex();
   const shouldReduceMotion = useReducedMotion();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
