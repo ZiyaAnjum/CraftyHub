@@ -10,21 +10,19 @@
 ## 1. Executive Summary
 
 ### 1.1 Overall Metrics
-- **Overall Completion:** **89.7%** (Phases 1, 2, 3, 4A, 4B & 5 completed)
-- **Formula:** `(Implemented + 0.5 * Partial) / Total Requirements` = `(59 + 0.5 * 4) / 68` = `61.0 / 68` = **89.7%**
+- **Overall Completion:** **91.8%** (Phases 1, 2, 3, 4A, 4B, 5 & 6 completed)
+- **Formula:** `(Implemented + 0.5 * Partial) / Total Requirements` = `(67 + 0.5 * 0) / 73` = `67.0 / 73` = **91.8%**
 - **Status Breakdown:**
-  - ✅ **Implemented:** 59 requirements (86.8%)
-  - 🟡 **Partial:** 4 requirements (5.9%)
-  - ❌ **Missing:** 5 requirements (7.4%)
+  - ✅ **Implemented:** 67 requirements (91.8%)
+  - 🟡 **Partial:** 0 requirements (0.0%)
+  - ❌ **Missing:** 6 requirements (8.2%) (Deferred per project scope: Google Sign-In F-97, Account Deletion F-98, QR Digital Gift Page F-80 to F-83)
   - ❓ **Unclear:** 0 requirements (0%)
 
-### 1.2 Top Remaining Gaps
-1. **PWA Shell, Manifest & Offline Caching Missing (NFR-PWA, Criterion 8):**
-   The application is specified as an installable PWA with app shell caching. In reality, `manifest.json`, Web App Manifest meta tags, service worker registration (`sw.js`), and install prompts do not exist in `frontend/public/` or `frontend/index.html`.
-2. **QR Digital Gift Page (F-80 to F-83):**
-   Recipient digital greeting card linked via physical gift QR code with unguessable token and animated mobile gift page.
-3. **Google Sign-In & Account Deletion (F-97, F-98):**
-   Google OAuth button and DPDP/GDPR account deletion flow.
+### 1.2 Top Remaining Gaps (Deferred)
+1. **QR Digital Gift Page (F-80 to F-83):**
+   Recipient digital greeting card linked via physical gift QR code with unguessable token and animated mobile gift page (deferred).
+2. **Google Sign-In & Account Deletion (F-97, F-98):**
+   Google OAuth button and DPDP/GDPR account deletion flow (deferred).
 
 ---
 
@@ -55,10 +53,13 @@
 | F-13 | Create order with unique Order ID and status "Received" | ✅ Implemented | `server/src/models/Order.js` (`generateUniqueOrderNumber`, `orderSchema`); `server/src/routes/orders.js` | Order is created with status history (initial step `placed` alias for Received). Order ID is generated as random unguessable `FC-XXXXXXXX` (8 uppercase hex chars) with collision check. |
 | F-14 | Confirmation screen with Order ID, summary & WhatsApp button | ✅ Implemented | `frontend/src/pages/CreatePage.jsx` (lines 309-415) | Success screen renders `#orderNumber`, next steps card, pre-filled WhatsApp link with order ID & item title. |
 | F-15 | Save Order ID (copy button) | ✅ Implemented | `frontend/src/pages/CreatePage.jsx` (`copyOrderNumber`, lines 300-305, 341-350) | One-tap clipboard copy with visual checkmark indicator. |
+| F-16 | Active order cap per customer | ✅ Implemented | `server/src/routes/orders.js` (lines 261-270); `server/tests/orders.test.js` | Restricts each customer to maximum 10 active concurrent orders (`placed`, `confirmed`, `in_progress`, `ready`) to prevent spam enquiry floods. |
 | **7.3** | **Order Tracking** | | | |
 | F-20 | My Orders list: customer opens only their own orders | ✅ Implemented | `frontend/src/pages/OrdersPage.jsx`; `server/src/routes/orders.js` (`GET /mine`, lines 270-280) | `GET /api/orders/mine` and `GET /api/orders/:orderNumberOrId` strictly filter by `user: req.user.id`. |
 | F-21 | Status timeline: Received → Confirmed → In Progress → Ready → Delivered | ✅ Implemented | `frontend/src/pages/OrdersPage.jsx` (lines 298-345); `frontend/src/pages/TrackPage.jsx` (lines 283-344) | Horizontal/vertical timeline with milestone ticks and timestamps. (Uses `placed` for initial step). |
 | F-22 | Order summary and note from owner | ✅ Implemented | `frontend/src/pages/OrdersPage.jsx`; `frontend/src/pages/TrackPage.jsx`; `server/src/routes/orders.js` (`clientOrderView`) | Order summary, specifications, delivery address, quoted price, ready-by date, and customer-visible note from artisan (`customerNote`) displayed in both My Orders and Track views. |
+| F-23 | Public unauthenticated order tracking | ✅ Implemented | `frontend/src/pages/TrackPage.jsx`; `server/src/routes/orders.js` (`POST /api/orders/track`); `server/tests/orders.test.js` | Dedicated `/track` lookup page using Order Number and 10-digit mobile number with dual rate limiters and strict privacy stripping. |
+| F-24 | Customer order cancellation | ✅ Implemented | `frontend/src/pages/OrdersPage.jsx` (`handleCancelOrder`); `server/src/routes/orders.js` (`PATCH /api/orders/:orderNumberOrId/cancel`) | Self-service atomic cancellation from My Orders while order is still in `placed` status. |
 | **7.4** | **Gift Builder Wizard** | | | |
 | F-30 | Step-by-step wizard: Occasion → Recipient → Budget → Theme → Colour | ✅ Implemented | `frontend/src/pages/GiftBuilderPage.jsx` | Mobile-first 4-step wizard with animated progress bar, backwards navigation without losing answers, and quick-select option cards. |
 | F-31 | Rule-based package suggestion by matching tags & budget | ✅ Implemented | `server/src/routes/builder.js` (`POST /api/builder/suggest`); `server/src/middleware/rateLimiters.js` (`builderLimiter`) | Zod-validated rule engine scoring published items on occasion tags, budget boundaries, and preference overlap; returns top 3–5 items with "why this matches" rationale. |
@@ -79,16 +80,17 @@
 | F-64 | Admin product CRUD including image upload | ✅ Implemented | `frontend/src/pages/AdminItemsPage.jsx`; `server/src/routes/admin.js` (`/items`, lines 367-561) | Create, edit, toggle visibility/featured/hamper-eligibility, delete (blocked if orders reference it), Cloudinary image upload. |
 | F-65 | Customers view with order history (P1) | ✅ Implemented | `server/src/routes/admin.js` (`/customers`, `/customers/:id/orders`); `frontend/src/pages/AdminCustomersPage.jsx` | Paginated customer table with search (name/email/phone), explicit projection (no password hashes or tokens), aggregation for order count, total quoted spend, and last order date; per-customer order history slide-over drawer. |
 | F-66 | Admin sets final agreed price | ✅ Implemented | `server/src/routes/admin.js` (lines 273, 347 `quotedPrice`); `frontend/src/pages/AdminOrderDetailPage.jsx` (lines 524-537) | `quotedPrice` numeric field saved and displayed across customer tracking pages. |
+| F-67 | Dedicated admin portal login screen | ✅ Implemented | `frontend/src/pages/AdminLoginPage.jsx` (`/admin/login`); `frontend/src/components/RequireAuth.jsx` | Bespoke administrator authentication portal providing dedicated visual feedback and role validation. |
 | **7.8** | **Dashboard** | | | |
 | F-70 | Cards for today, pending, total orders this month | ✅ Implemented | `frontend/src/pages/AdminDashboardPage.jsx`; `server/src/routes/admin.js` (`GET /stats`) | Stat cards display New/Placed, Confirmed, In Progress, Ready, Overdue, Placed Today (IST), and Total Orders This Month computed from 1st of month in IST. |
 | F-71 | Chart of monthly orders (P1) | ✅ Implemented | `server/src/routes/admin.js` (`/stats`); `frontend/src/pages/AdminDashboardPage.jsx` | Recharts AreaChart with gradient fill showing 6-month monthly order volume and quoted spend aggregated in IST (`Asia/Kolkata`) with responsive containers and friendly empty states. |
 | F-72 | Most requested occasions and popular products (P1) | ✅ Implemented | `server/src/routes/admin.js` (`/stats`); `frontend/src/pages/AdminDashboardPage.jsx` | MongoDB aggregation grouping orders by occasion with normalization and friendly empty state, displayed as a responsive horizontal BarChart with custom tooltips. |
 | F-73 | Budget range distribution of customers (P1) | ✅ Implemented | `server/src/routes/admin.js` (`/stats`); `frontend/src/pages/AdminDashboardPage.jsx` | MongoDB aggregation bucketing orders into price brackets (Under ₹500, ₹500–₹1,500, ₹1,500–₹3,000, Above ₹3,000, Custom/Pending), displayed as a responsive BarChart. |
 | **7.9** | **QR Digital Gift Page** | | | |
-| F-80 | Admin attaches message, photos, date, recipient name | ❌ Missing | `server/src/models/`; `frontend/src/pages/AdminOrderDetailPage.jsx` | No `GiftPage` schema or UI form. |
-| F-81 | System generates unique QR code linking to gift page | ❌ Missing | `frontend/package.json`; `frontend/src/` | No QR code library installed or used. |
-| F-82 | Public animated mobile gift page without login | ❌ Missing | `frontend/src/App.jsx` | No `/gift/:token` route or page component. |
-| F-83 | Link uses random unguessable token | ❌ Missing | `server/src/routes/` | No `GET /api/gift/:token` endpoint. |
+| F-80 | Admin attaches message, photos, date, recipient name | ❌ Missing | `server/src/models/`; `frontend/src/pages/AdminOrderDetailPage.jsx` | Deferred per project scope. |
+| F-81 | System generates unique QR code linking to gift page | ❌ Missing | `frontend/package.json`; `frontend/src/` | Deferred per project scope. |
+| F-82 | Public animated mobile gift page without login | ❌ Missing | `frontend/src/App.jsx` | Deferred per project scope. |
+| F-83 | Link uses random unguessable token | ❌ Missing | `server/src/routes/` | Deferred per project scope. |
 | **8.1** | **Security Specifications** | | | |
 | S-01 | Passwords: bcrypt cost 12, 10-72 chars, letter & digit | ✅ Implemented | `server/src/routes/auth.js` (lines 15, 21-26); `server/src/models/User.js` (`select: false`) | Bcrypt cost 12, password regex checks, password hash excluded from queries by default. |
 | S-02 | Sessions: 15m access token, 7d rotating refresh token in httpOnly cookies | ✅ Implemented | `server/src/utils/tokens.js` (lines 5-48); `server/src/routes/auth.js` (`/refresh`) | `fc_at` (15m, path `/`), `fc_rt` (7d, path `/api/auth`), httpOnly, SameSite, Secure in prod. |
@@ -107,16 +109,17 @@
 | S-15 | MongoDB Atlas with encrypted connection | ✅ Implemented | `server/src/server.js`; `server/src/config/env.js` | Mongoose connection with TLS connection strings. |
 | S-16 | Admin rate limiting & audit history | ✅ Implemented | `server/src/app.js` (line 59); `server/src/routes/admin.js` (lines 331-343) | Status changes recorded with timestamp and admin notes in `statusHistory`. |
 | S-17 | Server-calculated product prices | ✅ Implemented | `server/src/routes/orders.js` (lines 300-349); `server/src/models/Order.js` | Server recalculates hamper total from current MongoDB database prices (`basePrice + sum(unitPrice * quantity)`), rejects unpublished/ineligible item IDs, and ignores any client-sent price. Final order price is strictly server-determined. |
+| S-18 | Social crawler Open Graph previews | ✅ Implemented | `server/src/routes/previews.js`; `server/src/app.js` | Server-side route detects social crawlers (WhatsApp, Facebook, Twitter, Instagram, Telegram) and returns structured HTML with Open Graph tags and Cloudinary dynamic image resizing (1200x630). |
 | **8.2** | **Privacy & Policies** | | | |
 | NFR-01 | Privacy Policy & Terms page with consent checkbox | ✅ Implemented | `frontend/src/pages/PrivacyPolicyPage.jsx`; `frontend/src/pages/SignUpPage.jsx`; `frontend/src/components/layout/SiteFooter.jsx` | Comprehensive Privacy Policy page (`/privacy`), consent checkbox on user registration enforced on frontend and backend (`termsAccepted: true`), and footer links. |
 | **8.0** | **Non-Functional Requirements** | | | |
 | NFR-02 | Responsiveness: 320px+ width, mobile bottom nav | ✅ Implemented | `frontend/src/components/Layout.jsx` (lines 56-110); `tailwind.config.js` | Fixed mobile bottom nav bar, sticky action bars, touch tap targets >= 44px. |
 | NFR-03 | Accessibility: contrast, keyboard nav, reduced-motion | ✅ Implemented | `frontend/src/components/home/Hero.jsx`; `frontend/src/lib/motion.js` | `useReducedMotion()` hooks disable animations; semantic markup and ARIA labels implemented. |
-| NFR-04 | PWA: Web manifest, service worker shell, installable | ❌ Missing | `frontend/public/`; `frontend/index.html` | No `manifest.json`, no service worker, no PWA install trigger. |
+| NFR-04 | PWA: Web manifest, service worker shell, installable | ✅ Implemented | `frontend/public/manifest.json`; `frontend/public/sw.js`; `frontend/public/offline.html`; `frontend/src/components/PwaInstallPrompt.jsx` | Web App Manifest with icons (192, 512, maskable), service worker pre-caching app shell & static assets (bypassing /api and auth), offline fallback page, and custom install banner. |
 
 ---
 
-## 3. Implemented but NOT in the PRD (Extras)
+## 3. Kept Extras (Formally Integrated into PRD v1.2)
 
 The following 7 features are implemented and active in the code, but are not documented in `docs/PRD.md`:
 

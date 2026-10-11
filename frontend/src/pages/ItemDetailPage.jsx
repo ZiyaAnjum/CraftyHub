@@ -447,6 +447,37 @@ export function ItemDetailPage() {
             ) : null}
           </div>
 
+          {/* Ready-By Estimate (Phase 6) */}
+          {(() => {
+            const estimatedDays = Number(prepDays) > 0 ? Number(prepDays) : 3;
+            const estimatedReadyDate = new Date(Date.now() + estimatedDays * 24 * 60 * 60 * 1000);
+            const formattedEstimatedDate = new Intl.DateTimeFormat('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            }).format(estimatedReadyDate);
+
+            return (
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-3 text-xs shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                  <Calendar className="w-4 h-4 text-amber-700" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="font-semibold text-stone-900">
+                    Estimated Ready Date: <span className="text-amber-900 font-bold">{formattedEstimatedDate}</span>
+                    <span className="text-stone-500 font-normal ml-1">
+                      (~{estimatedDays} {estimatedDays === 1 ? 'day' : 'days'} crafting estimate)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 leading-relaxed">
+                    Handcrafted to order. Final readiness date will be confirmed by our artisan upon receiving your specifications.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Primary & Secondary Action CTAs */}
           <div className="space-y-3 pt-1">
             <Link

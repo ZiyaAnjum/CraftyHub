@@ -1,7 +1,16 @@
 import rateLimit from 'express-rate-limit';
 
+const isTest = () => process.env.NODE_ENV === 'test';
+
 const make = (windowMs, limit, message) =>
-  rateLimit({ windowMs, limit, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: message } });
+  rateLimit({
+    windowMs,
+    limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skip: isTest,
+    message: { error: message },
+  });
 
 export const globalLimiter = make(15 * 60 * 1000, 300, 'Too many requests. Please try again later.');
 export const authLimiter = make(15 * 60 * 1000, 10, 'Too many attempts. Please try again in a few minutes.');
@@ -14,6 +23,7 @@ export const builderLimiter = make(15 * 60 * 1000, 30, 'Too many builder request
 export const orderUserLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 20,
+  skip: isTest,
   keyGenerator: (req) => req.user?.id || req.ip,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
@@ -33,6 +43,7 @@ export const getTrackOrderKey = (req) => {
 export const trackOrderNumberLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
+  skip: isTest,
   skipSuccessfulRequests: true,
   keyGenerator: getTrackOrderKey,
   standardHeaders: 'draft-7',

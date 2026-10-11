@@ -16,7 +16,7 @@ import {
 import { api, ApiError } from '../lib/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatKolkataDateTime, formatKolkataDate } from '../lib/date';
-import { getShopWhatsAppUrl } from '../lib/whatsapp';
+import { getShopWhatsAppUrl, getOrderWhatsAppUrl } from '../lib/whatsapp';
 import { useNoIndex } from '../hooks/useNoIndex';
 
 const ORDER_STEPS = [
@@ -91,10 +91,9 @@ export function TrackPage() {
 
   const currentStepIdx = order ? getStepIndex(order.status) : -1;
 
-  const whatsappMessage = order
-    ? `Hello Fouzas Creation! I am tracking order #${order.orderNumber} for "${order.itemTitle}". Could you please provide an update?`
-    : 'Hello Fouzas Creation! I have a question regarding tracking my order.';
-  const whatsappUrl = getShopWhatsAppUrl(whatsappMessage);
+  const whatsappUrl = order
+    ? getOrderWhatsAppUrl(order, 'status')
+    : getShopWhatsAppUrl('Hello Fouzas Creation! I have a question regarding tracking my order.');
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-12 space-y-8">

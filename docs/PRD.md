@@ -124,6 +124,7 @@ Priority: **P0** = must have, **P1** = should have, **P2** = could have.
 | F-13 | On submit, the system creates an order with a unique Order ID and status "Received". | P0 |
 | F-14 | Confirmation screen shows the Order ID and a summary, with a "Continue on WhatsApp" button that opens WhatsApp with the summary pre-filled. | P0 |
 | F-15 | Customer can save the Order ID (copy button). | P1 |
+| F-16 | Active order cap: Customers are limited to a maximum of 10 concurrent active orders (placed, confirmed, in_progress, ready) to prevent spam enquiry floods and server abuse. | P1 |
 
 ### 7.3 Order tracking
 | ID | Requirement | Priority |
@@ -131,6 +132,8 @@ Priority: **P0** = must have, **P1** = should have, **P2** = could have.
 | F-20 | Signed-in customer sees a My Orders list and can open only their own orders. | P0 |
 | F-21 | The page shows a status timeline: Received → Confirmed → In Progress → Ready → Delivered (or Cancelled). | P0 |
 | F-22 | The page shows the order summary and any note from the owner. | P1 |
+| F-23 | Public unauthenticated order tracking: Customers can look up status at `/track` using Order Number (`FC-XXXXXXXX`) and registered 10-digit mobile number, protected by dual rate limits and strict data sanitization (address and private notes withheld). | P0 |
+| F-24 | Customer order cancellation: Customers can cancel an order self-service from their dashboard if the order is still in "Received/Placed" status. | P1 |
 
 ### 7.4 Gift Builder
 | ID | Requirement | Priority |
@@ -143,7 +146,7 @@ Priority: **P0** = must have, **P1** = should have, **P2** = could have.
 ### 7.5 Build-Your-Own Hamper
 | ID | Requirement | Priority |
 |---|---|---|
-| F-40 | Customer picks a base hamper, then adds items, personalization and packaging. | P1 |
+| F-40 | Customer picks a base hamper (Royal Velvet Keepsake Trunk ₹899, Handwoven Artisanal Wicker Basket ₹499, Classic Matte Magnetic Gift Box ₹299, or Carved Wooden Presentation Platter ₹399), then adds hamper-eligible items (max 5 per item, max 10 total), personalization message (max 500 chars), and packaging. | P1 |
 | F-41 | The running total updates instantly as items are added or removed. | P1 |
 | F-42 | A final preview lists all selections with the total before submitting. | P1 |
 
@@ -163,6 +166,7 @@ Priority: **P0** = must have, **P1** = should have, **P2** = could have.
 | F-64 | Admin can add, edit, hide and delete products, including image upload. | P0 |
 | F-65 | Customers view lists customers with their order history. | P1 |
 | F-66 | Admin can set the final agreed price on an order. | P1 |
+| F-67 | Dedicated admin portal login: Dedicated portal route at `/admin/login` styled specifically for store administrators with clear role feedback. | P1 |
 
 ### 7.8 Dashboard
 | ID | Requirement | Priority |
@@ -214,6 +218,7 @@ Priority: **P0** = must have, **P1** = should have, **P2** = could have.
 | S-15 | Database | MongoDB Atlas with IP allow-list, a least-privilege database user, encrypted connections and automated backups. |
 | S-16 | Admin | Admin routes are rate limited, and admin actions on orders are recorded in the order's status history. Consider two-factor authentication for the admin account. |
 | S-17 | Product prices | Prices and totals are calculated on the server from product data, never trusted from the client. |
+| S-18 | Social crawler previews | Server-side route detects social crawlers (WhatsApp, Facebook, Twitter, Instagram, Telegram) and returns structured HTML with Open Graph tags and Cloudinary dynamic image resizing (1200x630) for rich link previews. |
 
 ### 8.2 Privacy Requirements
 

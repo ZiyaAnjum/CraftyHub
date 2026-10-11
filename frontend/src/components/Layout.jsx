@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { SiteHeader } from './layout/SiteHeader';
 import { SiteFooter } from './layout/SiteFooter';
 import { FloatingWhatsAppButton } from './FloatingWhatsAppButton';
+import { PwaInstallPrompt } from './PwaInstallPrompt';
 
 export function Layout() {
   const { user } = useAuth();
@@ -55,6 +56,9 @@ export function Layout() {
 
       {/* Sticky Floating WhatsApp Button for public pages */}
       <FloatingWhatsAppButton />
+
+      {/* PWA Install Banner */}
+      <PwaInstallPrompt />
 
       {/* Mobile Bottom Navigation Bar (Design for 360px+ width) */}
       <nav

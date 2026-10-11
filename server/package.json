@@ -11,6 +11,8 @@
     "start": "node src/server.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:items": "node src/scripts/seedItems.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "audit": "npm audit --omit=dev"
   },
   "dependencies": {
@@ -29,5 +31,9 @@
     "multer": "^2.0.0",
     "nodemailer": "^10.0.16",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.3"
   }
 }

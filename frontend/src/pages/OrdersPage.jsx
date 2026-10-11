@@ -22,7 +22,7 @@ import { api, ApiError } from '../lib/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { OrderCardSkeleton } from '../components/Skeleton';
 import { formatKolkataDateTime, formatKolkataDate } from '../lib/date';
-import { getShopWhatsAppUrl } from '../lib/whatsapp';
+import { getShopWhatsAppUrl, getOrderWhatsAppUrl } from '../lib/whatsapp';
 import { useNoIndex } from '../hooks/useNoIndex';
 
 const STATUS_STEPS = [
@@ -203,8 +203,7 @@ export function OrdersPage() {
             const itemImage =
               order.itemSnapshot?.image || order.item?.images?.[0]?.url;
 
-            const whatsappMsg = `Hello Fouzas Creation! Regarding my order #${order.orderNumber} for "${itemTitle}": could you please provide an update?`;
-            const whatsappUrl = getShopWhatsAppUrl(whatsappMsg);
+            const whatsappUrl = getOrderWhatsAppUrl(order, 'status');
 
             return (
               <div

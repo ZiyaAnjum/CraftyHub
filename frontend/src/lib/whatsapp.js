@@ -67,3 +67,52 @@ export function getShopWhatsAppUrl(message = 'Hello Fouzas Creation, I would lik
   }
   return formatWhatsAppChatUrl(shopPhone, message);
 }
+
+/**
+ * Formats a concise, descriptive, properly URL-encoded WhatsApp message for orders.
+ * Incorporates the order number, product title, or hamper item summary.
+ *
+ * @param {object} order - Order document or snapshot
+ * @param {'confirm'|'status'} [action='confirm'] - Intent of the message
+ * @returns {string} Short formatted message string
+ */
+export function buildOrderWhatsAppMessage(order, action = 'confirm') {
+  if (!order) {
+    return 'Hello Fouzas Creation! I would like to enquire about my bespoke gift order.';
+  }
+
+  const orderNumber = order.orderNumber || order.orderId || '';
+  const isHamper = !!order.hamper?.items?.length;
+
+  let productSummary = '';
+  if (isHamper) {
+    const baseName = order.hamper.base?.name || 'Custom Hamper';
+    const totalItems = order.hamper.items.reduce((acc, i) => acc + (i.quantity || 1), 0);
+    productSummary = `${baseName} (${totalItems} items)`;
+  } else {
+    productSummary =
+      order.itemSnapshot?.title ||
+      order.item?.title ||
+      order.itemTitle ||
+      'Bespoke Creation';
+  }
+
+  if (action === 'status') {
+    return `Hello Fouzas Creation! Regarding order #${orderNumber} (${productSummary}): could you please share a status update?`;
+  }
+
+  return `Hello Fouzas Creation! I just placed order #${orderNumber} (${productSummary}). Could you please confirm details?`;
+}
+
+/**
+ * Generates a direct WhatsApp link for a specific order.
+ *
+ * @param {object} order
+ * @param {'confirm'|'status'} [action='confirm']
+ * @returns {string} wa.me link
+ */
+export function getOrderWhatsAppUrl(order, action = 'confirm') {
+  const message = buildOrderWhatsAppMessage(order, action);
+  return getShopWhatsAppUrl(message);
+}
+

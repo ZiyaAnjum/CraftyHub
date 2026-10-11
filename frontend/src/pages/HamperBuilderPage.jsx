@@ -30,7 +30,7 @@ import { api, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { getOptimizedImageUrl } from '../lib/images';
 import { getTodayKolkataDateString } from '../lib/date';
-import { cleanWhatsAppNumber, getShopWhatsAppUrl } from '../lib/whatsapp';
+import { cleanWhatsAppNumber, getShopWhatsAppUrl, getOrderWhatsAppUrl } from '../lib/whatsapp';
 
 const HAMPER_DRAFT_KEY = 'fc_hamper_draft';
 
@@ -438,10 +438,7 @@ export function HamperBuilderPage() {
   // SUCCESS SCREEN
   // -------------------------------------------------------------
   if (placedOrder) {
-    const hamperBaseName = placedOrder.hamper?.base?.name || selectedBase.name;
-    const finalTotal = placedOrder.quotedPrice || placedOrder.hamper?.calculatedTotal || runningTotal;
-    const successMsg = `Hello Fouzas Creation! I just placed Hamper order #${placedOrder.orderNumber} ("${hamperBaseName}"). Could you please confirm crafting timeline?`;
-    const whatsappUrl = getShopWhatsAppUrl(successMsg);
+    const whatsappUrl = getOrderWhatsAppUrl(placedOrder, 'confirm');
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-6">

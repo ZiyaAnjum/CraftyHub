@@ -28,7 +28,7 @@ import { useDraft } from '../hooks/useDraft';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { getTodayKolkataDateString } from '../lib/date';
-import { cleanWhatsAppNumber, getShopWhatsAppUrl } from '../lib/whatsapp';
+import { cleanWhatsAppNumber, getShopWhatsAppUrl, getOrderWhatsAppUrl } from '../lib/whatsapp';
 
 export function CreatePage() {
   const shouldReduceMotion = useReducedMotion();
@@ -417,10 +417,7 @@ export function CreatePage() {
   // SUCCESS SCREEN
   // -------------------------------------------------------------
   if (placedOrder) {
-    const successMsg = `Hello Fouzas Creation! I just placed order #${placedOrder.orderNumber} for "${
-      placedOrder.itemSnapshot?.title || 'Bespoke Custom Creation'
-    }". Could you please confirm details?`;
-    const whatsappUrl = getShopWhatsAppUrl(successMsg);
+    const whatsappUrl = getOrderWhatsAppUrl(placedOrder, 'confirm');
 
     return (
       <div className="max-w-xl mx-auto px-4 py-12 text-center space-y-6">
