@@ -195,8 +195,87 @@ export function HomePage() {
           </section>
         )}
 
-      {/* 3. Shop by Category Tiles */}
-      <section className="space-y-6">
+        {/* 3. Gift Builder Wizard Showcase Banner (PRD F-30 to F-33) */}
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white p-6 sm:p-10 shadow-elevated border border-gold-500/30">
+          <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-72 h-72 rounded-full bg-gold-400/10 blur-3xl pointer-events-none" />
+          <div className="relative z-10 max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-400/20 text-gold-300 text-xs font-bold uppercase tracking-wider border border-gold-400/30 backdrop-blur-xs">
+              <Sparkles className="w-3.5 h-3.5 text-gold-300" />
+              <span>Smart Gift Builder</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-4xl font-bold text-white leading-tight">
+              Looking for something tailored? <br />
+              <span className="italic text-gold-300">Let our wizard guide your gift.</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-xl">
+              Answer 4 quick questions about the occasion, recipient, and budget. Our rule-engine curates top handcrafted creations matched with personalized styling.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <Link
+                to="/gift-builder"
+                className="px-6 py-3.5 rounded-full bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-500 hover:to-gold-600 text-stone-950 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 tap-target"
+              >
+                <Gift className="w-4 h-4 text-stone-950" />
+                <span>Launch Gift Builder</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/explore"
+                className="px-5 py-3.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs sm:text-sm font-semibold border border-white/20 transition-colors tap-target"
+              >
+                <span>Browse All Products</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* 3B. Build-Your-Own Hamper Studio Banner (PRD F-40 to F-42) */}
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-cream-100 via-rose-50/60 to-amber-50/70 border border-gold-300/60 p-6 sm:p-10 shadow-soft">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-3 max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blush-100 text-blush-800 text-xs font-bold uppercase tracking-wider border border-blush-200">
+                <Package className="w-3.5 h-3.5 text-blush-600" />
+                <span>Custom Curation Studio</span>
+              </div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900 leading-tight">
+                Build Your Own <span className="text-blush-700 italic">Bespoke Hamper</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                Pick an artisanal base—from velvet trunks to handwoven willow baskets. Add your favorite chocolates, keepsakes, and bouquets with live price updates and an engraved gift card.
+              </p>
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <Link
+                  to="/hamper-builder"
+                  className="px-6 py-3.5 rounded-full bg-gradient-to-r from-blush-500 to-rose-600 hover:from-blush-600 hover:to-rose-700 text-white font-bold text-xs sm:text-sm shadow-soft transition-all flex items-center gap-2 tap-target"
+                >
+                  <Package className="w-4 h-4 text-white" />
+                  <span>Start Building Hamper</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <span className="text-xs text-stone-500 font-medium">
+                  Starting from ₹299 base + curated items
+                </span>
+              </div>
+            </div>
+
+            {/* Visual Feature Badges */}
+            <div className="grid grid-cols-2 gap-3 shrink-0 w-full sm:w-auto">
+              <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs text-center space-y-1">
+                <span className="text-2xl">🧺</span>
+                <p className="font-serif font-bold text-xs text-stone-900">Wicker Baskets</p>
+                <p className="text-[10px] text-stone-500">Eco willow & satin</p>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs text-center space-y-1">
+                <span className="text-2xl">📦</span>
+                <p className="font-serif font-bold text-xs text-stone-900">Velvet Trunks</p>
+                <p className="text-[10px] text-stone-500">Brass keepsake clasp</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Shop by Category Tiles */}
+        <section className="space-y-6">
         <div>
           <span className="text-xs uppercase tracking-widest text-gold-600 font-semibold block mb-1">
             Browse By Craft

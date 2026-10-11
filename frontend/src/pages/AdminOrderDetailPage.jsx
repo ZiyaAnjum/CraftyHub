@@ -56,6 +56,7 @@ export function AdminOrderDetailPage() {
   const [status, setStatus] = useState('placed');
   const [readyByInput, setReadyByInput] = useState('');
   const [quotedPrice, setQuotedPrice] = useState('');
+  const [customerNote, setCustomerNote] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [historyNote, setHistoryNote] = useState('');
   const [forceOverride, setForceOverride] = useState(false);
@@ -87,6 +88,7 @@ export function AdminOrderDetailPage() {
       setQuotedPrice(
         data.quotedPrice !== null && data.quotedPrice !== undefined ? String(data.quotedPrice) : ''
       );
+      setCustomerNote(data.customerNote || '');
       setAdminNotes(data.adminNotes || '');
       setHistoryNote('');
       setForceOverride(false);
@@ -141,6 +143,7 @@ export function AdminOrderDetailPage() {
         status,
         readyBy: readyByPayload,
         quotedPrice: pricePayload,
+        customerNote: customerNote.trim(),
         adminNotes: adminNotes.trim(),
         note: historyNote.trim() || undefined,
         forceStatusOverride: forceOverride,
@@ -377,6 +380,76 @@ export function AdminOrderDetailPage() {
               </div>
             )}
 
+            {/* Hamper Breakdown Card (F-40 to F-42) */}
+            {order.hamper && (
+              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/90 space-y-3">
+                <div className="flex items-center justify-between border-b border-amber-200/70 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-amber-700" />
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">
+                        Custom Hamper Build
+                      </span>
+                      <h4 className="font-serif font-bold text-stone-900 text-sm">
+                        {order.hamper.base?.name || 'Selected Base Box/Basket'}
+                      </h4>
+                    </div>
+                  </div>
+                  <span className="font-bold text-xs text-amber-900">
+                    Base: ₹{order.hamper.base?.price || 0}
+                  </span>
+                </div>
+
+                {Array.isArray(order.hamper.items) && order.hamper.items.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 block">
+                      Enclosed Items ({order.hamper.items.reduce((s, i) => s + (i.quantity || 1), 0)} items total):
+                    </span>
+                    <div className="divide-y divide-amber-200/60 bg-white rounded-xl border border-amber-200/60 px-3">
+                      {order.hamper.items.map((hItem, idx) => (
+                        <div key={idx} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {hItem.image && (
+                              <img
+                                src={hItem.image}
+                                alt={hItem.title}
+                                className="w-8 h-8 rounded-lg object-cover border border-stone-200 shrink-0"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-semibold text-stone-900 truncate text-xs">{hItem.title}</p>
+                              <p className="text-[11px] text-stone-500">
+                                Qty: {hItem.quantity} × ₹{hItem.unitPrice}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="font-bold text-stone-900 text-xs shrink-0">
+                            ₹{hItem.totalPrice || hItem.unitPrice * hItem.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {order.hamper.giftMessage && (
+                  <div className="p-3 rounded-xl bg-white/90 border border-amber-200/70 text-xs text-amber-950">
+                    <strong className="block text-[11px] font-semibold text-amber-800 mb-0.5">
+                      Customer Gift Message for Inscription Card:
+                    </strong>
+                    <p className="italic whitespace-pre-wrap">"{order.hamper.giftMessage}"</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-1 border-t border-amber-200/70 text-xs font-semibold text-amber-950">
+                  <span>Server-Calculated Price Total:</span>
+                  <span className="font-serif font-bold text-base text-blush-700">
+                    ₹{order.quotedPrice !== null && order.quotedPrice !== undefined ? order.quotedPrice : order.hamper.calculatedTotal}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Custom Requirements Text */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 block">
@@ -534,6 +607,28 @@ export function AdminOrderDetailPage() {
                   placeholder="e.g. 2400"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-blush-500 font-medium"
                 />
+              </div>
+
+              {/* Customer-Visible Note (F-22, F-63) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider">
+                    Customer-Visible Note
+                  </label>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+                    Visible to Customer
+                  </span>
+                </div>
+                <textarea
+                  rows={2}
+                  value={customerNote}
+                  onChange={(e) => setCustomerNote(e.target.value)}
+                  placeholder="Note visible to customer on My Orders and Tracking page (e.g., 'Artisan has started calligraphy on frame. Dispatched via Dunzo.')..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm focus:outline-none focus:border-blush-500"
+                />
+                <p className="text-[11px] text-stone-400">
+                  Displayed directly to the customer on their order details and tracking view.
+                </p>
               </div>
 
               {/* Internal Admin Notes */}

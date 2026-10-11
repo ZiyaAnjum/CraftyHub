@@ -16,6 +16,7 @@ export function SignUpPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState(null);
@@ -54,6 +55,10 @@ export function SignUpPage() {
       errors.password = 'Password must contain at least one number';
     }
 
+    if (!termsAccepted) {
+      errors.termsAccepted = 'You must accept the terms and privacy policy to continue';
+    }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -71,6 +76,7 @@ export function SignUpPage() {
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password,
+        termsAccepted: true,
       });
 
       // Redirect safely back to next page (e.g. /create with draft intact)
@@ -290,6 +296,32 @@ export function SignUpPage() {
                   <span>At least one number (0-9)</span>
                 </div>
               </div>
+            </div>
+
+            {/* Terms & Privacy Consent Checkbox (NFR-01) */}
+            <div className="pt-1">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => {
+                    setTermsAccepted(e.target.checked);
+                    if (fieldErrors.termsAccepted) setFieldErrors((prev) => ({ ...prev, termsAccepted: null }));
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-stone-300 text-blush-600 focus:ring-blush-500 cursor-pointer"
+                  required
+                />
+                <span className="text-xs text-stone-600 leading-relaxed">
+                  I agree to the{' '}
+                  <Link to="/privacy" target="_blank" className="text-blush-700 underline font-semibold hover:text-blush-800">
+                    Privacy Policy
+                  </Link>{' '}
+                  and consent to Fouzas Creation processing my contact details for order fulfillment and WhatsApp updates.
+                </span>
+              </label>
+              {fieldErrors.termsAccepted && (
+                <p className="text-[11px] text-rose-600 mt-1 pl-6">{fieldErrors.termsAccepted}</p>
+              )}
             </div>
 
             <button

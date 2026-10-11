@@ -40,6 +40,14 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price: High to Low' },
 ];
 
+export const BUDGET_RANGES = [
+  { id: 'all', label: 'All Budgets', min: null, max: null },
+  { id: 'under-500', label: 'Under ₹500', min: 0, max: 500 },
+  { id: '500-1500', label: '₹500 – ₹1,500', min: 500, max: 1500 },
+  { id: '1500-3000', label: '₹1,500 – ₹3,000', min: 1500, max: 3000 },
+  { id: 'above-3000', label: 'Above ₹3,000', min: 3000, max: null },
+];
+
 export function ExplorePage() {
   const shouldReduceMotion = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,6 +57,8 @@ export function ExplorePage() {
   const initialCategory = CATEGORIES.includes(categoryParam) ? categoryParam : 'All';
   const occasionParam = searchParams.get('occasion');
   const initialOccasion = OCCASIONS.includes(occasionParam) ? occasionParam : 'All';
+  const budgetParam = searchParams.get('budget');
+  const initialBudget = BUDGET_RANGES.some((b) => b.id === budgetParam) ? budgetParam : 'all';
   const sortParam = searchParams.get('sort');
   const initialSort = SORT_OPTIONS.some((s) => s.value === sortParam) ? sortParam : 'featured';
   const initialQuery = searchParams.get('q') || '';
@@ -56,6 +66,7 @@ export function ExplorePage() {
 
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedOccasion, setSelectedOccasion] = useState(initialOccasion);
+  const [selectedBudget, setSelectedBudget] = useState(initialBudget);
   const [sortBy, setSortBy] = useState(initialSort);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
@@ -86,6 +97,9 @@ export function ExplorePage() {
     if (selectedOccasion && selectedOccasion !== 'All') {
       params.set('occasion', selectedOccasion);
     }
+    if (selectedBudget && selectedBudget !== 'all') {
+      params.set('budget', selectedBudget);
+    }
     if (sortBy && sortBy !== 'featured') {
       params.set('sort', sortBy);
     }
@@ -96,17 +110,18 @@ export function ExplorePage() {
       params.set('page', String(page));
     }
     setSearchParams(params, { replace: true });
-  }, [selectedCategory, selectedOccasion, sortBy, debouncedQuery, page, setSearchParams]);
+  }, [selectedCategory, selectedOccasion, selectedBudget, sortBy, debouncedQuery, page, setSearchParams]);
 
   // Check if any filter is active
   const hasActiveFilters = useMemo(() => {
     return (
       (selectedCategory && selectedCategory !== 'All') ||
       (selectedOccasion && selectedOccasion !== 'All') ||
+      (selectedBudget && selectedBudget !== 'all') ||
       Boolean(debouncedQuery.trim()) ||
       sortBy !== 'featured'
     );
-  }, [selectedCategory, selectedOccasion, debouncedQuery, sortBy]);
+  }, [selectedCategory, selectedOccasion, selectedBudget, debouncedQuery, sortBy]);
 
   // Fetch Featured items for top row (only needed if no active filters)
   useEffect(() => {
@@ -142,6 +157,13 @@ export function ExplorePage() {
       if (selectedOccasion && selectedOccasion !== 'All') {
         queryParams.set('occasion', selectedOccasion);
       }
+      if (selectedBudget && selectedBudget !== 'all') {
+        const activeBudget = BUDGET_RANGES.find((b) => b.id === selectedBudget);
+        if (activeBudget) {
+          if (activeBudget.min !== null) queryParams.set('minPrice', String(activeBudget.min));
+          if (activeBudget.max !== null) queryParams.set('maxPrice', String(activeBudget.max));
+        }
+      }
       if (sortBy) {
         queryParams.set('sort', sortBy);
       }
@@ -170,7 +192,7 @@ export function ExplorePage() {
 
   useEffect(() => {
     fetchItems();
-  }, [selectedCategory, selectedOccasion, sortBy, debouncedQuery, page]);
+  }, [selectedCategory, selectedOccasion, selectedBudget, sortBy, debouncedQuery, page]);
 
   const handleCategorySelect = (cat) => {
     setSelectedCategory(cat);
@@ -182,6 +204,11 @@ export function ExplorePage() {
     setPage(1);
   };
 
+  const handleBudgetSelect = (bId) => {
+    setSelectedBudget(bId);
+    setPage(1);
+  };
+
   const handleSortChange = (e) => {
     setSortBy(e.target.value);
     setPage(1);
@@ -190,6 +217,7 @@ export function ExplorePage() {
   const handleResetFilters = () => {
     setSelectedCategory('All');
     setSelectedOccasion('All');
+    setSelectedBudget('all');
     setSortBy('featured');
     setSearchQuery('');
     setDebouncedQuery('');
@@ -347,6 +375,30 @@ export function ExplorePage() {
                   />
                 )}
                 <span className="relative z-10">{cat === 'All' ? 'All Categories' : cat}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row C: Budget Range Chips (F-03) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider shrink-0 mr-1 select-none">
+            Budget:
+          </span>
+          {BUDGET_RANGES.map((b) => {
+            const isSelected = selectedBudget === b.id;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => handleBudgetSelect(b.id)}
+                className={`relative px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all tap-target ${
+                  isSelected
+                    ? 'text-stone-900 bg-gold-400 font-bold shadow-xs'
+                    : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200'
+                }`}
+              >
+                {b.label}
               </button>
             );
           })}

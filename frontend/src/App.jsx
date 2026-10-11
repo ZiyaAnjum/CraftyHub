@@ -15,6 +15,12 @@ import { AccountPage } from './pages/AccountPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { ItemDetailPage } from './pages/ItemDetailPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
+import { GiftBuilderPage } from './pages/GiftBuilderPage';
+import { HamperBuilderPage } from './pages/HamperBuilderPage';
 
 // Admin Pages (Lazy loaded with React.lazy + Suspense so customers never download admin code)
 const AdminDashboardPage = React.lazy(() =>
@@ -28,6 +34,9 @@ const AdminOrderDetailPage = React.lazy(() =>
 );
 const AdminItemsPage = React.lazy(() =>
   import('./pages/AdminItemsPage').then((m) => ({ default: m.AdminItemsPage }))
+);
+const AdminCustomersPage = React.lazy(() =>
+  import('./pages/AdminCustomersPage').then((m) => ({ default: m.AdminCustomersPage }))
 );
 const AdminLoginPage = React.lazy(() =>
   import('./pages/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage }))
@@ -62,11 +71,17 @@ export default function App() {
           <Route path="explore" element={<ExplorePage />} />
           <Route path="gifts/:slug" element={<LegacyGiftRedirect />} />
           <Route path="items/:slug" element={<ItemDetailPage />} />
+          <Route path="gift-builder" element={<GiftBuilderPage />} />
+          <Route path="hamper-builder" element={<HamperBuilderPage />} />
           <Route path="create" element={<CreatePage />} />
           <Route path="track" element={<TrackPage />} />
           <Route path="signin" element={<SignInPage />} />
           <Route path="login" element={<Navigate to="/signin" replace />} />
           <Route path="signup" element={<SignUpPage />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="reset-password" element={<ResetPasswordPage />} />
+          <Route path="verify-email" element={<VerifyEmailPage />} />
+          <Route path="privacy" element={<PrivacyPolicyPage />} />
 
           {/* Protected Customer Routes */}
           <Route element={<RequireAuth />}>
@@ -126,6 +141,14 @@ export default function App() {
             element={
               <Suspense fallback={<AdminLoadingFallback />}>
                 <AdminOrderDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="customers"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <AdminCustomersPage />
               </Suspense>
             }
           />

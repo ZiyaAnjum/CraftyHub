@@ -5,6 +5,7 @@ import { pageTransition } from '../lib/motion';
 import { Home, Compass, Gift, Package, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { SiteHeader } from './layout/SiteHeader';
+import { SiteFooter } from './layout/SiteFooter';
 import { FloatingWhatsAppButton } from './FloatingWhatsAppButton';
 
 export function Layout() {
@@ -48,6 +49,9 @@ export function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Site Footer */}
+      <SiteFooter />
 
       {/* Sticky Floating WhatsApp Button for public pages */}
       <FloatingWhatsAppButton />

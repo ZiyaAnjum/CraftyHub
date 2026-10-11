@@ -67,6 +67,10 @@ const itemSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isHamperEligible: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

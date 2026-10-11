@@ -18,7 +18,26 @@ import {
   Loader2,
   ChevronRight,
   TrendingUp,
+  BarChart3,
+  PieChart as PieChartIcon,
+  IndianRupee,
+  Layers,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from 'recharts';
 import { api } from '../lib/api';
 import { StatusBadge } from '../components/StatusBadge';
 import {
@@ -28,6 +47,60 @@ import {
   isOrderOverdue,
   isOrderDueSoon,
 } from '../lib/date';
+
+const OCCASION_COLORS = [
+  '#b85d68',
+  '#d4a373',
+  '#8b5cf6',
+  '#0ea5e9',
+  '#10b981',
+  '#f59e0b',
+  '#ec4899',
+  '#78716c',
+];
+
+const BUDGET_COLORS = ['#10b981', '#0ea5e9', '#8b5cf6', '#d4a373', '#b85d68'];
+
+function CustomMonthlyTooltip({ active, payload, label }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-stone-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md text-xs border border-stone-800 space-y-1">
+        <p className="font-serif font-bold text-stone-200">{label}</p>
+        <p className="flex items-center justify-between gap-4 text-blush-300">
+          <span>Orders Placed:</span>
+          <span className="font-mono font-bold">{payload[0]?.value || 0}</span>
+        </p>
+        {payload[1] !== undefined && (
+          <p className="flex items-center justify-between gap-4 text-gold-300">
+            <span>Quoted Spend:</span>
+            <span className="font-mono font-bold">
+              ₹{Number(payload[1]?.value || 0).toLocaleString('en-IN')}
+            </span>
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+
+function CustomSimpleTooltip({ active, payload, label, unit = 'orders' }) {
+  if (active && payload && payload.length) {
+    const entry = payload[0];
+    return (
+      <div className="bg-stone-900/95 text-white px-3 py-2 rounded-2xl shadow-xl backdrop-blur-md text-xs border border-stone-800">
+        <p className="font-serif font-bold text-stone-200">{label || entry.name}</p>
+        <p className="mt-1 flex items-center justify-between gap-3 text-stone-300">
+          <span>Volume:</span>
+          <span className="font-mono font-bold text-white">
+            {entry.value} {unit}
+          </span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
 
 export function AdminDashboardPage() {
   const [stats, setStats] = useState(null);
@@ -70,6 +143,16 @@ export function AdminDashboardPage() {
   const readyCount = counts.ready || 0;
   const overdueCount = stats?.overdueCount || 0;
   const todayCount = stats?.placedToday || 0;
+  const monthCount = stats?.ordersThisMonth || 0;
+
+  const monthlyVolume = stats?.monthlyVolume || [];
+  const occasionPopularity = stats?.occasionPopularity || [];
+  const budgetDistribution = stats?.budgetDistribution || [];
+
+  const totalMonthlyVolumeCount = monthlyVolume.reduce((acc, m) => acc + (m.orderCount || 0), 0);
+  const totalMonthlyQuotedSpend = monthlyVolume.reduce((acc, m) => acc + (m.totalQuoted || 0), 0);
+  const totalOccasionsCount = occasionPopularity.reduce((acc, o) => acc + (o.count || 0), 0);
+  const totalBudgetOrdersCount = budgetDistribution.reduce((acc, b) => acc + (b.count || 0), 0);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -133,8 +216,8 @@ export function AdminDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Stat Cards Grid (6 metrics) */}
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
+          {/* Stat Cards Grid (7 metrics) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
             {/* 1. New Orders */}
             <div className="bg-white p-4 sm:p-5 rounded-3xl border border-amber-200/70 shadow-2xs space-y-1.5 relative overflow-hidden">
               <div className="flex items-center justify-between">
@@ -221,6 +304,20 @@ export function AdminDashboardPage() {
                 {todayCount}
               </div>
               <p className="text-[11px] text-stone-400">Orders placed today</p>
+            </div>
+
+            {/* 7. Placed This Month */}
+            <div className="bg-white p-4 sm:p-5 rounded-3xl border border-blush-200/80 shadow-2xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blush-700">
+                  This Month
+                </span>
+                <TrendingUp className="w-3.5 h-3.5 text-blush-600" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+                {monthCount}
+              </div>
+              <p className="text-[11px] text-stone-400">Total orders this month</p>
             </div>
           </div>
 
@@ -339,6 +436,239 @@ export function AdminDashboardPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Section: Business Analytics & Trends (F-71 to F-73) */}
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gold-700">
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Performance Analytics</span>
+                </div>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-stone-900 mt-0.5">
+                  Order Trends & Demand Breakdown
+                </h2>
+                <p className="text-xs text-stone-400 mt-0.5">
+                  Aggregated in Asia/Kolkata timezone with 6-month monthly volume, top occasions, and budget distribution.
+                </p>
+              </div>
+            </div>
+
+            {/* 1. Monthly Order Volume (Last 6 Months) (F-71) */}
+            <div className="bg-white rounded-3xl border border-stone-200/90 shadow-soft p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-blush-600" />
+                    <h3 className="font-serif text-base sm:text-lg font-bold text-stone-900">
+                      Monthly Order Volume & Quoted Spend
+                    </h3>
+                  </div>
+                  <p className="text-xs text-stone-400 mt-0.5">
+                    Order volume across the last 6 calendar months (IST boundaries).
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                  <div className="px-3 py-1.5 rounded-xl bg-cream-50 border border-stone-200/80 text-stone-700">
+                    <span className="text-stone-400">Total 6M Volume: </span>
+                    <strong className="text-stone-900 font-mono">{totalMonthlyVolumeCount} orders</strong>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-xl bg-gold-50/70 border border-gold-200 text-gold-900">
+                    <span className="text-gold-700 font-medium">Quoted Total: </span>
+                    <strong className="font-mono">₹{Number(totalMonthlyQuotedSpend).toLocaleString('en-IN')}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {totalMonthlyVolumeCount === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-6 space-y-2 bg-cream-50/40 rounded-2xl border border-dashed border-stone-200">
+                  <div className="w-12 h-12 rounded-2xl bg-cream-100 text-stone-400 flex items-center justify-center">
+                    <BarChart3 className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-serif font-bold text-stone-800 text-sm">No Orders in the Last 6 Months</h4>
+                  <p className="text-xs text-stone-400 max-w-sm">
+                    As customers place orders and enquiries, the month-by-month volume and quoted spend trendline will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="h-72 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyVolume} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="orderVolumeGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#b85d68" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#b85d68" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1ece6" />
+                      <XAxis
+                        dataKey="label"
+                        tickLine={false}
+                        axisLine={{ stroke: '#e7e5e4' }}
+                        tick={{ fill: '#78716c', fontSize: 11 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#78716c', fontSize: 11 }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip content={<CustomMonthlyTooltip />} />
+                      <Area
+                        type="monotone"
+                        dataKey="orderCount"
+                        name="Orders Placed"
+                        stroke="#b85d68"
+                        strokeWidth={2.5}
+                        fillOpacity={1}
+                        fill="url(#orderVolumeGrad)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* 2 & 3: Occasion Popularity (F-72) & Budget Distribution (F-73) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Occasion Popularity */}
+              <div className="bg-white rounded-3xl border border-stone-200/90 shadow-soft p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <PieChartIcon className="w-4 h-4 text-purple-600" />
+                      <h3 className="font-serif text-base sm:text-lg font-bold text-stone-900">
+                        Occasion Popularity
+                      </h3>
+                    </div>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      Top celebrations and gifting themes requested by customers.
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-purple-50 text-purple-800 border border-purple-200/60">
+                    {occasionPopularity.length} Occasions
+                  </span>
+                </div>
+
+                {totalOccasionsCount === 0 || occasionPopularity.length === 0 ? (
+                  <div className="h-64 flex flex-col items-center justify-center text-center p-6 space-y-2 bg-cream-50/40 rounded-2xl border border-dashed border-stone-200">
+                    <div className="w-12 h-12 rounded-2xl bg-cream-100 text-stone-400 flex items-center justify-center">
+                      <PieChartIcon className="w-6 h-6" />
+                    </div>
+                    <h4 className="font-serif font-bold text-stone-800 text-sm">No Occasion Data Yet</h4>
+                    <p className="text-xs text-stone-400 max-w-xs">
+                      Occasion popularity will be grouped automatically as customer orders are submitted.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={occasionPopularity}
+                        layout="vertical"
+                        margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1ece6" />
+                        <XAxis
+                          type="number"
+                          allowDecimals={false}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e7e5e4' }}
+                          tick={{ fill: '#78716c', fontSize: 11 }}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="occasion"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#44403c', fontSize: 11, fontWeight: 500 }}
+                          width={95}
+                        />
+                        <Tooltip content={<CustomSimpleTooltip unit="orders" />} />
+                        <Bar dataKey="count" name="Orders" radius={[0, 8, 8, 0]}>
+                          {occasionPopularity.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={OCCASION_COLORS[index % OCCASION_COLORS.length]}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Budget Distribution */}
+              <div className="bg-white rounded-3xl border border-stone-200/90 shadow-soft p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="w-4 h-4 text-emerald-600" />
+                      <h3 className="font-serif text-base sm:text-lg font-bold text-stone-900">
+                        Customer Budget Distribution
+                      </h3>
+                    </div>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      Order breakdown across price tiers and bespoke quotes.
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                    {totalBudgetOrdersCount} Orders
+                  </span>
+                </div>
+
+                {totalBudgetOrdersCount === 0 ? (
+                  <div className="h-64 flex flex-col items-center justify-center text-center p-6 space-y-2 bg-cream-50/40 rounded-2xl border border-dashed border-stone-200">
+                    <div className="w-12 h-12 rounded-2xl bg-cream-100 text-stone-400 flex items-center justify-center">
+                      <IndianRupee className="w-6 h-6" />
+                    </div>
+                    <h4 className="font-serif font-bold text-stone-800 text-sm">No Budget Data Yet</h4>
+                    <p className="text-xs text-stone-400 max-w-xs">
+                      Budget tiers will populate as orders are priced or submitted with target ranges.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={budgetDistribution}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 25 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1ece6" />
+                        <XAxis
+                          dataKey="bracket"
+                          tickLine={false}
+                          axisLine={{ stroke: '#e7e5e4' }}
+                          tick={{ fill: '#78716c', fontSize: 10 }}
+                          interval={0}
+                          angle={-15}
+                          textAnchor="end"
+                          height={40}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#78716c', fontSize: 11 }}
+                          allowDecimals={false}
+                        />
+                        <Tooltip content={<CustomSimpleTooltip unit="orders" />} />
+                        <Bar dataKey="count" name="Orders" radius={[8, 8, 0, 0]}>
+                          {budgetDistribution.map((entry, index) => (
+                            <Cell
+                              key={`budget-${index}`}
+                              fill={BUDGET_COLORS[index % BUDGET_COLORS.length]}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Section: 10 Most Recent Orders */}

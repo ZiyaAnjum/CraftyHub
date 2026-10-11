@@ -274,6 +274,21 @@ export function TrackPage() {
             </div>
           </div>
 
+          {/* Artisan Customer-Visible Note (F-22, F-63) */}
+          {order.customerNote && (
+            <div className="p-4 rounded-2xl bg-blush-50/70 border border-blush-200 flex items-start gap-3">
+              <MessageCircle className="w-5 h-5 text-blush-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-blush-950 block">
+                  Artisan Message
+                </span>
+                <p className="text-xs text-stone-700 italic leading-relaxed">
+                  "{order.customerNote}"
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Status Timeline */}
           {order.status === 'cancelled' ? (
             <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800">

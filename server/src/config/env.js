@@ -17,6 +17,19 @@ const schema = z
     COOKIE_DOMAIN: z.string().optional(),
     COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
     TRUST_PROXY: z.string().default('1'),
+    EMAIL_HOST: z.string().optional().default('smtp.gmail.com'),
+    EMAIL_PORT: z.coerce.number().optional().default(587),
+    EMAIL_USER: z.string().optional().default(''),
+    EMAIL_PASS: z.string().optional().default(''),
+    EMAIL_FROM: z.string().optional().default('Fouzas Creation <noreply@fouzascreation.com>'),
+    CLIENT_URL: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().url().optional()
+    ),
+    PUBLIC_SITE_URL: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().url().optional()
+    ),
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {
@@ -61,5 +74,7 @@ export const env = {
   ...parsed.data,
   PUBLIC_SITE_URL: (parsed.data.PUBLIC_SITE_URL || parsed.data.CLIENT_ORIGIN).replace(/\/+$/, ''),
   CLIENT_ORIGIN: parsed.data.CLIENT_ORIGIN.replace(/\/+$/, ''),
+  CLIENT_URL: (parsed.data.CLIENT_URL || parsed.data.CLIENT_ORIGIN).replace(/\/+$/, ''),
 };
 export const isProd = env.NODE_ENV === 'production';
+

@@ -364,6 +364,72 @@ export function OrdersPage() {
                         transition={{ duration: 0.2 }}
                         className="space-y-3 pt-3 overflow-hidden text-xs text-stone-700"
                       >
+                        {/* Hamper Breakdown (F-40 to F-42) */}
+                        {order.hamper && (
+                          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-3">
+                            <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                              <div className="flex items-center gap-2">
+                                <Package className="w-4 h-4 text-amber-700" />
+                                <span className="font-bold text-amber-950">
+                                  Hamper Base: {order.hamper.base?.name || 'Custom Hamper'}
+                                </span>
+                              </div>
+                              <span className="font-semibold text-amber-900 text-xs">
+                                Base Price: ₹{order.hamper.base?.price || 0}
+                              </span>
+                            </div>
+
+                            {Array.isArray(order.hamper.items) && order.hamper.items.length > 0 && (
+                              <div className="space-y-1.5">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 block">
+                                  Selected Hamper Items ({order.hamper.items.reduce((s, i) => s + (i.quantity || 1), 0)} items):
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  {order.hamper.items.map((hItem, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="bg-white p-2.5 rounded-xl border border-amber-200/60 flex items-center justify-between gap-2 shadow-2xs"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        {hItem.image && (
+                                          <img
+                                            src={hItem.image}
+                                            alt={hItem.title}
+                                            className="w-9 h-9 rounded-lg object-cover border border-stone-100 shrink-0"
+                                          />
+                                        )}
+                                        <div className="min-w-0">
+                                          <p className="font-semibold text-stone-900 truncate text-xs">{hItem.title}</p>
+                                          <p className="text-[11px] text-stone-500">
+                                            Qty: {hItem.quantity} × ₹{hItem.unitPrice}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <span className="font-bold text-stone-900 text-xs shrink-0">
+                                        ₹{hItem.totalPrice || hItem.unitPrice * hItem.quantity}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {order.hamper.giftMessage && (
+                              <div className="p-2.5 rounded-xl bg-white/80 border border-amber-200/60 text-xs text-amber-900">
+                                <strong className="text-amber-950 font-semibold block text-[11px] mb-0.5">Enclosed Gift Card Message:</strong>
+                                <p className="italic whitespace-pre-wrap">"{order.hamper.giftMessage}"</p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between pt-1 border-t border-amber-200/60 font-semibold text-xs text-amber-950">
+                              <span>Server-Calculated Hamper Total:</span>
+                              <span className="text-sm font-bold text-blush-700">
+                                ₹{order.quotedPrice !== null && order.quotedPrice !== undefined ? order.quotedPrice : order.hamper.calculatedTotal}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Requirements */}
                         {order.requirements && (
                           <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/70">
@@ -416,6 +482,21 @@ export function OrdersPage() {
                                 </a>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Artisan Customer-Visible Note (F-22) */}
+                        {order.customerNote && (
+                          <div className="p-3.5 rounded-2xl bg-blush-50/70 border border-blush-200/80">
+                            <div className="flex items-center gap-2 mb-1">
+                              <MessageCircle className="w-4 h-4 text-blush-600 shrink-0" />
+                              <strong className="text-xs font-semibold text-blush-950">
+                                Note from Fouzas Creation:
+                              </strong>
+                            </div>
+                            <p className="text-xs text-stone-700 italic pl-6 leading-relaxed">
+                              "{order.customerNote}"
+                            </p>
                           </div>
                         )}
 

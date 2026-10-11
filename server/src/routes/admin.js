@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { Order, ORDER_STATUSES } from '../models/Order.js';
 import { Item, ITEM_CATEGORIES, slugify } from '../models/Item.js';
+import { User } from '../models/User.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { uploadSingleImage } from '../middleware/upload.js';
@@ -37,6 +38,37 @@ function getKolkataDayBounds(dateInput) {
   return { startOfDay, endOfDay };
 }
 
+function getLastSixMonthsIST() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now);
+  const currentYear = parseInt(parts.find((p) => p.type === 'year').value, 10);
+  const currentMonth = parseInt(parts.find((p) => p.type === 'month').value, 10); // 1-12
+
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    let y = currentYear;
+    let m = currentMonth - i;
+    while (m <= 0) {
+      m += 12;
+      y -= 1;
+    }
+    const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+    const dateObj = new Date(`${monthKey}-01T00:00:00.000+05:30`);
+    const label = dateObj.toLocaleDateString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      month: 'short',
+      year: '2-digit',
+    });
+    months.push({ key: monthKey, label, dateObj });
+  }
+  const startDate = months[0].dateObj;
+  return { months, startDate };
+}
+
 // GET /api/admin/stats
 router.get('/stats', async (req, res, next) => {
   try {
@@ -44,27 +76,155 @@ router.get('/stats', async (req, res, next) => {
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const todayBounds = getKolkataDayBounds(now);
 
-    const [statusAggregation, totalOrders, placedToday, overdueCount, dueWithin24hCount, recentOrdersRaw] =
-      await Promise.all([
-        Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
-        Order.countDocuments(),
-        Order.countDocuments({
-          createdAt: { $gte: todayBounds.startOfDay, $lte: todayBounds.endOfDay },
-        }),
-        Order.countDocuments({
-          readyBy: { $ne: null, $lt: now },
-          status: { $nin: ['ready', 'delivered', 'cancelled'] },
-        }),
-        Order.countDocuments({
-          readyBy: { $gte: now, $lte: in24h },
-          status: { $nin: ['ready', 'delivered', 'cancelled'] },
-        }),
-        Order.find()
-          .populate('user', 'name email phone')
-          .populate('item', 'title category startingPrice images')
-          .sort({ createdAt: -1 })
-          .limit(10),
-      ]);
+    // Start of current month in Asia/Kolkata (F-70)
+    const monthParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(now);
+    const mYear = monthParts.find((p) => p.type === 'year').value;
+    const mMonth = monthParts.find((p) => p.type === 'month').value;
+    const startOfMonth = new Date(`${mYear}-${mMonth}-01T00:00:00.000+05:30`);
+
+    const { months: sixMonths, startDate: sixMonthsStart } = getLastSixMonthsIST();
+
+    const [
+      statusAggregation,
+      totalOrders,
+      placedToday,
+      ordersThisMonth,
+      overdueCount,
+      dueWithin24hCount,
+      recentOrdersRaw,
+      monthlyVolumeAgg,
+      occasionAgg,
+      budgetDistributionAgg,
+    ] = await Promise.all([
+      Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Order.countDocuments(),
+      Order.countDocuments({
+        createdAt: { $gte: todayBounds.startOfDay, $lte: todayBounds.endOfDay },
+      }),
+      Order.countDocuments({
+        createdAt: { $gte: startOfMonth },
+      }),
+      Order.countDocuments({
+        readyBy: { $ne: null, $lt: now },
+        status: { $nin: ['ready', 'delivered', 'cancelled'] },
+      }),
+      Order.countDocuments({
+        readyBy: { $gte: now, $lte: in24h },
+        status: { $nin: ['ready', 'delivered', 'cancelled'] },
+      }),
+      Order.find()
+        .populate('user', 'name email phone')
+        .populate('item', 'title category startingPrice images')
+        .sort({ createdAt: -1 })
+        .limit(10),
+      // 1. Monthly order volume (last 6 months, IST timezone) (F-71)
+      Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: sixMonthsStart },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m',
+                date: '$createdAt',
+                timezone: '+05:30',
+              },
+            },
+            orderCount: { $sum: 1 },
+            totalQuoted: {
+              $sum: {
+                $cond: [
+                  { $and: [{ $ne: ['$status', 'cancelled'] }, { $gt: ['$quotedPrice', 0] }] },
+                  '$quotedPrice',
+                  0,
+                ],
+              },
+            },
+            deliveredCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] },
+            },
+          },
+        },
+      ]),
+      // 2. Occasion popularity (F-72)
+      Order.aggregate([
+        {
+          $project: {
+            occasionTrimmed: {
+              $trim: { input: { $ifNull: ['$occasion', ''] } },
+            },
+          },
+        },
+        {
+          $project: {
+            occasion: {
+              $cond: [
+                { $or: [{ $eq: ['$occasionTrimmed', ''] }, { $eq: ['$occasionTrimmed', null] }] },
+                'Unspecified',
+                '$occasionTrimmed',
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$occasion',
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: 8 },
+      ]),
+      // 3. Budget distribution of customers (F-73)
+      Order.aggregate([
+        {
+          $project: {
+            bracket: {
+              $switch: {
+                branches: [
+                  {
+                    case: {
+                      $and: [{ $gt: ['$quotedPrice', 0] }, { $lt: ['$quotedPrice', 500] }],
+                    },
+                    then: 'Under ₹500',
+                  },
+                  {
+                    case: {
+                      $and: [{ $gte: ['$quotedPrice', 500] }, { $lte: ['$quotedPrice', 1500] }],
+                    },
+                    then: '₹500 – ₹1,500',
+                  },
+                  {
+                    case: {
+                      $and: [{ $gt: ['$quotedPrice', 1500] }, { $lte: ['$quotedPrice', 3000] }],
+                    },
+                    then: '₹1,500 – ₹3,000',
+                  },
+                  {
+                    case: { $gt: ['$quotedPrice', 3000] },
+                    then: 'Above ₹3,000',
+                  },
+                ],
+                default: 'Custom / Pending',
+              },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$bracket',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
 
     const countsByStatus = ORDER_STATUSES.reduce((acc, s) => {
       acc[s] = 0;
@@ -82,13 +242,50 @@ router.get('/stats', async (req, res, next) => {
       orderId: o.orderNumber,
     }));
 
+    // Align monthly volume with full 6 months timeline in IST
+    const monthlyVolumeMap = new Map();
+    monthlyVolumeAgg.forEach((row) => {
+      if (row._id) {
+        monthlyVolumeMap.set(row._id, row);
+      }
+    });
+    const monthlyVolume = sixMonths.map(({ key, label }) => {
+      const found = monthlyVolumeMap.get(key);
+      return {
+        month: key,
+        label,
+        orderCount: found ? found.orderCount : 0,
+        totalQuoted: found ? found.totalQuoted : 0,
+        deliveredCount: found ? found.deliveredCount : 0,
+      };
+    });
+
+    const occasionPopularity = occasionAgg.map((row) => ({
+      occasion: row._id,
+      count: row.count,
+    }));
+
+    const BRACKET_ORDER = ['Under ₹500', '₹500 – ₹1,500', '₹1,500 – ₹3,000', 'Above ₹3,000', 'Custom / Pending'];
+    const budgetMap = new Map();
+    budgetDistributionAgg.forEach((b) => {
+      if (b._id) budgetMap.set(b._id, b.count);
+    });
+    const budgetDistribution = BRACKET_ORDER.map((bracket) => ({
+      bracket,
+      count: budgetMap.get(bracket) || 0,
+    }));
+
     res.json({
       countsByStatus,
       totalOrders,
       placedToday,
+      ordersThisMonth,
       overdueCount,
       dueWithin24hCount,
       recentOrders,
+      monthlyVolume,
+      occasionPopularity,
+      budgetDistribution,
     });
   } catch (e) {
     next(e);
@@ -98,7 +295,7 @@ router.get('/stats', async (req, res, next) => {
 // GET /api/admin/orders
 router.get('/orders', async (req, res, next) => {
   try {
-    const { status, startDate, endDate, search, q, overdue, page, limit } = req.query;
+    const { status, occasion, startDate, endDate, search, q, overdue, page, limit } = req.query;
     const filter = {};
 
     // Search by order number, customer name, customer phone
@@ -111,6 +308,35 @@ router.get('/orders', async (req, res, next) => {
         { 'customer.name': searchRegex },
         { 'customer.phone': searchRegex },
       ];
+    }
+
+    // Occasion filter (F-61)
+    if (occasion && occasion !== 'All' && occasion !== 'all') {
+      let occasionCondition;
+      if (occasion.trim().toLowerCase() === 'unspecified') {
+        occasionCondition = [
+          { occasion: { $exists: false } },
+          { occasion: null },
+          { occasion: '' },
+          { occasion: /^unspecified$/i },
+        ];
+      } else {
+        const escapedOccasion = occasion.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const occasionRegex = new RegExp(escapedOccasion, 'i');
+        const matchingItems = await Item.find({ occasionTags: occasionRegex }).select('_id');
+        const matchingItemIds = matchingItems.map((it) => it._id);
+        occasionCondition = [
+          { occasion: occasionRegex },
+          { requirements: occasionRegex },
+          { item: { $in: matchingItemIds } },
+        ];
+      }
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: occasionCondition }];
+        delete filter.$or;
+      } else {
+        filter.$or = occasionCondition;
+      }
     }
 
     // Status filter
@@ -200,8 +426,9 @@ router.get('/orders/:orderNumberOrId', async (req, res, next) => {
     const idParam = req.params.orderNumberOrId;
     let filter = null;
 
-    if (idParam.startsWith('FC-')) {
-      filter = { orderNumber: idParam };
+    if (idParam.toUpperCase().startsWith('FC-')) {
+      const escaped = idParam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter = { orderNumber: { $regex: new RegExp(`^${escaped}$`, 'i') } };
     } else if (/^[0-9a-fA-F]{24}$/.test(idParam)) {
       filter = { _id: idParam };
     } else {
@@ -256,8 +483,9 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
     const idParam = req.params.orderNumberOrId;
     let order = null;
 
-    if (idParam.startsWith('FC-')) {
-      order = await Order.findOne({ orderNumber: idParam });
+    if (idParam.toUpperCase().startsWith('FC-')) {
+      const escaped = idParam.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      order = await Order.findOne({ orderNumber: { $regex: new RegExp(`^${escaped}$`, 'i') } });
     } else if (/^[0-9a-fA-F]{24}$/.test(idParam)) {
       order = await Order.findById(idParam);
     }
@@ -342,7 +570,7 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
     }
 
     if (adminNotes !== undefined) order.adminNotes = adminNotes;
-    else if (customerNote !== undefined) order.adminNotes = customerNote;
+    if (customerNote !== undefined) order.customerNote = customerNote;
 
     if (quotedPrice !== undefined) order.quotedPrice = quotedPrice;
 
@@ -357,6 +585,152 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
         id: updated._id,
         orderId: updated.orderNumber,
       },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// --- CUSTOMERS (F-65) ---
+
+// GET /api/admin/customers
+router.get('/customers', async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const searchTerm = (req.query.search || req.query.q || '').trim();
+    const matchStage = {
+      role: { $ne: 'admin' },
+    };
+
+    if (searchTerm) {
+      const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escaped, 'i');
+      matchStage.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+      ];
+    }
+
+    const aggregationPipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: 'orders',
+          localField: '_id',
+          foreignField: 'user',
+          as: 'orders',
+        },
+      },
+      // Explicit projection: NEVER expose passwordHash, refreshTokenHash, verification/reset tokens
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          phone: 1,
+          savedAddress: 1,
+          emailVerified: 1,
+          createdAt: 1,
+          orderCount: { $size: '$orders' },
+          totalSpend: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: '$orders',
+                  as: 'o',
+                  cond: {
+                    $and: [
+                      { $ne: ['$$o.status', 'cancelled'] },
+                      { $gt: ['$$o.quotedPrice', 0] },
+                    ],
+                  },
+                },
+              },
+              initialValue: 0,
+              in: { $add: ['$$value', { $ifNull: ['$$this.quotedPrice', 0] }] },
+            },
+          },
+          lastOrderDate: { $max: '$orders.createdAt' },
+        },
+      },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          customers: [
+            { $sort: { lastOrderDate: -1, createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+          ],
+        },
+      },
+    ];
+
+    const [result] = await User.aggregate(aggregationPipeline);
+    const total = result?.metadata[0]?.total || 0;
+    const customers = (result?.customers || []).map((c) => ({
+      id: c._id,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      savedAddress: c.savedAddress || '',
+      emailVerified: !!c.emailVerified,
+      createdAt: c.createdAt,
+      orderCount: c.orderCount || 0,
+      totalSpend: c.totalSpend || 0,
+      lastOrderDate: c.lastOrderDate || null,
+    }));
+
+    res.json({
+      customers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /api/admin/customers/:id/orders
+router.get('/customers/:id/orders', async (req, res, next) => {
+  try {
+    const customer = await User.findById(req.params.id)
+      .select('_id name email phone savedAddress emailVerified createdAt')
+      .lean();
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found.' });
+    }
+
+    const orders = await Order.find({ user: customer._id })
+      .populate('item', 'title category startingPrice images')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formattedOrders = orders.map((o) => ({
+      ...o,
+      id: o._id,
+      orderId: o.orderNumber,
+    }));
+
+    res.json({
+      customer: {
+        id: customer._id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        savedAddress: customer.savedAddress || '',
+        emailVerified: !!customer.emailVerified,
+        createdAt: customer.createdAt,
+      },
+      orders: formattedOrders,
     });
   } catch (e) {
     next(e);
@@ -417,6 +791,7 @@ const createItemSchema = z
     isFeatured: z.boolean().optional().default(false),
     isVisible: z.boolean().optional().default(true),
     isPublished: z.boolean().optional(), // alias
+    isHamperEligible: z.boolean().optional().default(true),
     deliveryInfo: z.string().optional(),
     shortDescription: z.string().optional(),
     includes: z.array(z.string()).optional(),

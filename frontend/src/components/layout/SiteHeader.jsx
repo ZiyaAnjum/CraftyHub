@@ -69,6 +69,8 @@ export function SiteHeader() {
   const navLinks = [
     { to: '/', label: 'Home', end: true },
     { to: '/explore', label: 'Explore' },
+    { to: '/gift-builder', label: 'Gift Builder' },
+    { to: '/hamper-builder', label: 'Hamper Builder' },
     { to: '/create', label: 'Create' },
     { to: '/track', label: 'Track' },
   ];

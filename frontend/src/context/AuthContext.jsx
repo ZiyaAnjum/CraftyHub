@@ -47,10 +47,38 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const register = async ({ name, email, phone, password }) => {
-    const data = await api.post('/api/auth/register', { name, email, phone, password });
+  const register = async ({ name, email, phone, password, termsAccepted }) => {
+    const data = await api.post('/api/auth/register', { name, email, phone, password, termsAccepted });
     setUser(data.user);
     return data.user;
+  };
+
+  const updateProfile = async (updates) => {
+    const data = await api.patch('/api/auth/me', updates);
+    if (data?.user) {
+      setUser(data.user);
+    }
+    return data?.user;
+  };
+
+  const verifyEmail = async (token) => {
+    const data = await api.post('/api/auth/verify-email', { token });
+    if (data?.user) {
+      setUser(data.user);
+    }
+    return data;
+  };
+
+  const resendVerification = async (email) => {
+    return await api.post('/api/auth/resend-verification', { email });
+  };
+
+  const forgotPassword = async (email) => {
+    return await api.post('/api/auth/forgot-password', { email });
+  };
+
+  const resetPassword = async (token, newPassword) => {
+    return await api.post('/api/auth/reset-password', { token, password: newPassword });
   };
 
   const logout = async () => {
@@ -69,6 +97,11 @@ export function AuthProvider({ children }) {
     loading,
     login,
     register,
+    updateProfile,
+    verifyEmail,
+    resendVerification,
+    forgotPassword,
+    resetPassword,
     logout,
     checkAuth,
     isAuthenticated: !!user,

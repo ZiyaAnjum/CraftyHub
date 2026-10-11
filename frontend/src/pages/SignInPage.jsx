@@ -127,12 +127,20 @@ export function SignInPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="signin-password"
-                className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1"
-              >
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  htmlFor="signin-password"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider"
+                >
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-blush-600 hover:text-blush-700 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
                   <Lock className="w-4 h-4" />

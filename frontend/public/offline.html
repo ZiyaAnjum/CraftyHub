@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline | Fouzas Creation</title>
+    <style>
+      :root {
+        --color-cream: #fffdfa;
+        --color-blush: #b85d68;
+        --color-blush-dark: #9f4651;
+        --color-gold: #d4af37;
+        --color-stone: #292524;
+        --color-muted: #78716c;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background-color: var(--color-cream);
+        color: var(--color-stone);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #f2e9e1;
+        border-radius: 28px;
+        padding: 40px 32px;
+        max-width: 440px;
+        width: 100%;
+        box-shadow: 0 10px 25px -5px rgba(184, 93, 104, 0.08);
+      }
+      .icon-box {
+        width: 72px;
+        height: 72px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #fdf2f4, #fae8eb);
+        color: var(--color-blush);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 32px;
+      }
+      h1 {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--color-stone);
+        margin-bottom: 10px;
+        letter-spacing: -0.01em;
+      }
+      p {
+        font-size: 14px;
+        color: var(--color-muted);
+        line-height: 1.5;
+        margin-bottom: 24px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: var(--color-blush);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 16px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.2s ease, transform 0.1s ease;
+      }
+      .btn:hover {
+        background: var(--color-blush-dark);
+      }
+      .btn:active {
+        transform: scale(0.98);
+      }
+      .brand {
+        margin-top: 24px;
+        font-size: 12px;
+        color: #a8a29e;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon-box">🎁</div>
+      <h1>You're Currently Offline</h1>
+      <p>
+        It looks like your internet connection is unavailable. Please check your data or Wi-Fi connection and retry to browse and personalize your gifts.
+      </p>
+      <button class="btn" onclick="window.location.reload()">
+        Check Connection &amp; Retry
+      </button>
+      <div class="brand">Fouzas Creation Studio</div>
+    </div>
+  </body>
+</html>

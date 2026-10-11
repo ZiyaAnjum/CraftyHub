@@ -4,7 +4,14 @@ const DRAFT_STORAGE_KEY = 'fc_draft_order';
 
 const DEFAULT_DRAFT = {
   selectedItemId: '',
+  occasion: '',
   customizationAnswers: {},
+  previewOptions: {
+    text: '',
+    font: 'Playfair Display',
+    color: '#C4486A',
+    theme: 'floral',
+  },
   requirements: '',
   referenceImages: [],
   neededByDate: '',
@@ -21,16 +28,24 @@ export function clearDraftStorage() {
     localStorage.removeItem(DRAFT_STORAGE_KEY);
     localStorage.removeItem('fc_order_draft');
   } catch {
-    // Ignore
+    // Ignore storage errors
   }
 }
 
 export function useDraft() {
   const [draft, setDraftState] = useState(() => {
     try {
-      const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      const stored = sessionStorage.getItem(DRAFT_STORAGE_KEY) || localStorage.getItem(DRAFT_STORAGE_KEY);
       if (stored) {
-        return { ...DEFAULT_DRAFT, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        return {
+          ...DEFAULT_DRAFT,
+          ...parsed,
+          previewOptions: {
+            ...DEFAULT_DRAFT.previewOptions,
+            ...(parsed.previewOptions || {}),
+          },
+        };
       }
     } catch {
       // Fallback on storage errors
@@ -45,9 +60,11 @@ export function useDraft() {
     };
     setDraftState(updated);
     try {
-      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(updated));
+      const serialized = JSON.stringify(updated);
+      sessionStorage.setItem(DRAFT_STORAGE_KEY, serialized);
+      localStorage.setItem(DRAFT_STORAGE_KEY, serialized);
     } catch {
-      // Ignore sessionStorage quota issues
+      // Ignore storage quota issues
     }
   }, []);
 
@@ -60,10 +77,16 @@ export function useDraft() {
           ...prev.customizationAnswers,
           ...(patch.customizationAnswers || {}),
         },
+        previewOptions: {
+          ...prev.previewOptions,
+          ...(patch.previewOptions || {}),
+        },
         lastUpdated: new Date().toISOString(),
       };
       try {
-        sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(updated));
+        const serialized = JSON.stringify(updated);
+        sessionStorage.setItem(DRAFT_STORAGE_KEY, serialized);
+        localStorage.setItem(DRAFT_STORAGE_KEY, serialized);
       } catch {
         // Ignore errors
       }

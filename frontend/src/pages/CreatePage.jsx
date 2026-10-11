@@ -19,7 +19,11 @@ import {
   MessageCircle,
   Image as ImageIcon,
   Check,
+  Mail,
+  RefreshCw,
+  Eye,
 } from 'lucide-react';
+import { LiveCustomizationPreview } from '../components/preview/LiveCustomizationPreview';
 import { useDraft } from '../hooks/useDraft';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../lib/api';
@@ -30,7 +34,7 @@ export function CreatePage() {
   const shouldReduceMotion = useReducedMotion();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, resendVerification } = useAuth();
   const { draft, updateDraft, clearDraft } = useDraft();
 
   // Catalogue items for selector
@@ -38,7 +42,8 @@ export function CreatePage() {
   const [itemsLoading, setItemsLoading] = useState(true);
 
   // Form states initialized from draft or searchParams
-  const [selectedItemId, setSelectedItemId] = useState(draft.selectedItemId || '');
+  const [selectedItemId, setSelectedItemId] = useState(draft.selectedItemId || searchParams.get('item') || '');
+  const [occasion, setOccasion] = useState(draft.occasion || searchParams.get('occasion') || '');
   const [customizationAnswers, setCustomizationAnswers] = useState(draft.customizationAnswers || {});
   const [requirements, setRequirements] = useState(draft.requirements || '');
   const [referenceImages, setReferenceImages] = useState(draft.referenceImages || []);
@@ -46,6 +51,15 @@ export function CreatePage() {
   const [phone, setPhone] = useState(draft.phone || user?.phone || '');
   const [deliveryType, setDeliveryType] = useState(draft.deliveryType || 'delivery');
   const [address, setAddress] = useState(draft.address || '');
+  const [invalidItemNotice, setInvalidItemNotice] = useState(false);
+
+  // Live customization preview options (F-50, F-51)
+  const [previewText, setPreviewText] = useState(draft.previewOptions?.text || '');
+  const [previewSubtext, setPreviewSubtext] = useState(draft.previewOptions?.subtext || '');
+  const [previewFont, setPreviewFont] = useState(draft.previewOptions?.font || "'Playfair Display', Georgia, serif");
+  const [previewColor, setPreviewColor] = useState(draft.previewOptions?.color || '#C4486A');
+  const [previewTheme, setPreviewTheme] = useState(draft.previewOptions?.theme || 'floral');
+  const [showLivePreview, setShowLivePreview] = useState(Boolean(draft.previewOptions?.text));
 
   // Upload & submission states
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -81,6 +95,18 @@ export function CreatePage() {
     };
   }, []);
 
+  // Gracefully handle invalid or unpublished items from URL/draft without crashing
+  useEffect(() => {
+    if (!itemsLoading && selectedItemId && items.length > 0) {
+      const exists = items.some((i) => i._id === selectedItemId || i.id === selectedItemId);
+      if (!exists) {
+        setSelectedItemId('');
+        updateDraft({ selectedItemId: '' });
+        setInvalidItemNotice(true);
+      }
+    }
+  }, [itemsLoading, items, selectedItemId, updateDraft]);
+
   // Update phone if user logs in and phone is not yet set
   useEffect(() => {
     if (user?.phone && !phone) {
@@ -89,14 +115,19 @@ export function CreatePage() {
     }
   }, [user, phone, updateDraft]);
 
-  // Handle URL prefilling: ?item=<id>
+  // Handle URL prefilling: ?item=<id> & ?occasion=<text>
   useEffect(() => {
     const paramItem = searchParams.get('item');
     if (paramItem && paramItem !== selectedItemId) {
       setSelectedItemId(paramItem);
       updateDraft({ selectedItemId: paramItem });
     }
-  }, [searchParams, selectedItemId, updateDraft]);
+    const paramOccasion = searchParams.get('occasion');
+    if (paramOccasion && paramOccasion !== occasion) {
+      setOccasion(paramOccasion);
+      updateDraft({ occasion: paramOccasion });
+    }
+  }, [searchParams, selectedItemId, occasion, updateDraft]);
 
   // Helper for field change with draft persistence
   const handleFieldChange = (setter, field, value) => {
@@ -117,8 +148,31 @@ export function CreatePage() {
     setTimeout(() => setSavedNotice(false), 2000);
   };
 
+  // Preview options update handler (F-50, F-51)
+  const updatePreviewDraft = (patch) => {
+    updateDraft({
+      previewOptions: {
+        text: previewText,
+        subtext: previewSubtext,
+        font: previewFont,
+        color: previewColor,
+        theme: previewTheme,
+        ...patch,
+      },
+    });
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 2000);
+  };
+
   // Currently selected item object
   const currentItem = items.find((i) => i._id === selectedItemId);
+
+  // Automatically open preview when frame/engraved item is selected
+  useEffect(() => {
+    if (currentItem && (currentItem.category === 'Frame' || currentItem.category === 'Engraved')) {
+      setShowLivePreview(true);
+    }
+  }, [currentItem]);
 
   // Upload reference image (max 3)
   const handleImageUpload = async (e) => {
@@ -187,7 +241,14 @@ export function CreatePage() {
   const handleResetDraft = () => {
     clearDraft();
     setSelectedItemId('');
+    setOccasion('');
     setCustomizationAnswers({});
+    setPreviewText('');
+    setPreviewSubtext('');
+    setPreviewFont("'Playfair Display', Georgia, serif");
+    setPreviewColor('#C4486A');
+    setPreviewTheme('floral');
+    setShowLivePreview(false);
     setRequirements('');
     setReferenceImages([]);
     setNeededByDate('');
@@ -231,6 +292,23 @@ export function CreatePage() {
     return Object.keys(errors).length === 0;
   };
 
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [resendVerificationNotice, setResendVerificationNotice] = useState(null);
+
+  const handleResendVerification = async () => {
+    if (!user?.email || resendingVerification) return;
+    setResendingVerification(true);
+    setResendVerificationNotice(null);
+    try {
+      const res = await resendVerification(user.email);
+      setResendVerificationNotice(res.message || 'Verification link sent! Please check your inbox.');
+    } catch (err) {
+      setResendVerificationNotice(err.message || 'Failed to send verification link. Please try again.');
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
   // Submit order
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -242,6 +320,12 @@ export function CreatePage() {
     // Require authentication
     if (!user) {
       navigate('/signin?next=/create');
+      return;
+    }
+
+    // Require email verification (PRD F-95)
+    if (!user.emailVerified) {
+      setFormError('Please verify your email address before placing an order. A verification link was sent to your email.');
       return;
     }
 
@@ -259,8 +343,20 @@ export function CreatePage() {
         .filter(([_, val]) => Boolean(val && String(val).trim()))
         .map(([label, value]) => ({ label, value: String(value).trim() }));
 
+      // Save live preview custom choices with the order (PRD F-50, F-51)
+      if (previewText.trim()) {
+        answersArray.push({ label: 'Custom Inscription', value: previewText.trim() });
+        if (previewSubtext.trim()) {
+          answersArray.push({ label: 'Inscription Subtitle', value: previewSubtext.trim() });
+        }
+        answersArray.push({ label: 'Chosen Font', value: previewFont });
+        answersArray.push({ label: 'Chosen Accent Color', value: previewColor });
+        answersArray.push({ label: 'Chosen Frame Style', value: previewTheme });
+      }
+
       const payload = {
         item: selectedItemId || null,
+        occasion: occasion.trim() || undefined,
         customizationAnswers: answersArray,
         requirements: requirements.trim(),
         referenceImages,
@@ -278,9 +374,22 @@ export function CreatePage() {
       const result = await api.post('/api/orders', payload);
       setPlacedOrder(result.order);
       clearDraft();
+      // Ensure all local form states are also cleanly reset
+      setSelectedItemId('');
+      setOccasion('');
+      setCustomizationAnswers({});
+      setPreviewText('');
+      setPreviewSubtext('');
+      setRequirements('');
+      setReferenceImages([]);
+      setNeededByDate('');
+      setAddress('');
+      setShowLivePreview(false);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (Array.isArray(err.details) && err.details.length > 0) {
+        if (err.data?.code === 'EMAIL_NOT_VERIFIED') {
+          setFormError('Please verify your email address before placing an order.');
+        } else if (Array.isArray(err.details) && err.details.length > 0) {
           const map = {};
           err.details.forEach((d) => {
             map[d.field] = d.message;
@@ -410,6 +519,17 @@ export function CreatePage() {
               <span>Chat on WhatsApp</span>
             </a>
           )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setPlacedOrder(null);
+              handleResetDraft();
+            }}
+            className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-sm transition-colors tap-target"
+          >
+            <span>Design Another Gift</span>
+          </button>
         </div>
       </div>
     );
@@ -460,6 +580,68 @@ export function CreatePage() {
             <p className="font-semibold">Unable to submit order</p>
             <p className="text-xs mt-0.5">{formError}</p>
           </div>
+        </div>
+      )}
+
+      {invalidItemNotice && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-start gap-3 animate-fade-in">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold text-amber-950">Requested catalog item is unavailable</p>
+            <p className="text-xs mt-0.5 text-amber-800">
+              The item specified in the link or draft is unpublished or no longer in our catalog. You can choose any of our available gifts below, or design a fully custom piece from scratch!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInvalidItemNotice(false)}
+            className="text-amber-500 hover:text-amber-800 p-1"
+            title="Dismiss notice"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Email Verification Required Banner (PRD F-95) */}
+      {user && !user.emailVerified && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-amber-50/90 border border-amber-200/90 text-amber-900 shadow-2xs space-y-3">
+          <div className="flex items-start gap-3">
+            <Mail className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h2 className="font-semibold text-sm text-amber-950">
+                Email verification required before placing orders
+              </h2>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Before submitting your order, please verify your email address (<strong>{user.email}</strong>). We sent a confirmation link to your inbox.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resendingVerification}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-semibold shadow-2xs transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${resendingVerification ? 'animate-spin' : ''}`} />
+              <span>{resendingVerification ? 'Sending link...' : 'Resend verification email'}</span>
+            </button>
+
+            <Link
+              to="/verify-email"
+              className="inline-flex items-center gap-1 text-xs text-amber-800 hover:text-amber-950 font-medium underline underline-offset-2 ml-1"
+            >
+              <span>Have a verification token?</span>
+            </Link>
+          </div>
+
+          {resendVerificationNotice && (
+            <div className="text-xs font-medium text-emerald-800 bg-emerald-50/90 p-2.5 rounded-xl border border-emerald-200">
+              {resendVerificationNotice}
+            </div>
+          )}
         </div>
       )}
 
@@ -547,6 +729,83 @@ export function CreatePage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Occasion Selection / Display */}
+          <div className="pt-2">
+            <label
+              htmlFor="occasion-input"
+              className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5"
+            >
+              Gifting Occasion
+            </label>
+            <input
+              id="occasion-input"
+              type="text"
+              maxLength={60}
+              value={occasion}
+              onChange={(e) => handleFieldChange(setOccasion, 'occasion', e.target.value)}
+              placeholder="e.g. Birthday, Anniversary, Wedding, Engagement, Corporate..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 bg-cream-50/50 text-stone-900 text-sm focus:bg-white focus:border-blush-500 transition-colors"
+            />
+            {occasion && (
+              <span className="text-[11px] text-blush-700 font-medium block mt-1">
+                Personalizing for: <strong>{occasion}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* LIVE CUSTOMIZATION PREVIEW (PRD F-50, F-51) */}
+        <div className="bg-white rounded-3xl p-5 sm:p-7 border border-blush-100 shadow-soft space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-lg font-bold text-stone-900 flex items-center gap-2">
+              <Eye className="w-5 h-5 text-blush-600" />
+              <span>Live Customization Preview</span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowLivePreview(!showLivePreview)}
+              className="text-xs font-semibold text-blush-700 hover:text-blush-900 underline underline-offset-2"
+            >
+              {showLivePreview ? 'Hide Preview' : 'Show Live Preview'}
+            </button>
+          </div>
+
+          <p className="text-xs text-stone-500 leading-relaxed">
+            Personalize your name, inscription text, typography style, and accent color with an interactive live SVG preview.
+          </p>
+
+          {showLivePreview && (
+            <div className="pt-2">
+              <LiveCustomizationPreview
+                text={previewText}
+                subtext={previewSubtext}
+                font={previewFont}
+                color={previewColor}
+                theme={previewTheme}
+                onTextChange={(val) => {
+                  setPreviewText(val);
+                  updatePreviewDraft({ text: val });
+                }}
+                onSubtextChange={(val) => {
+                  setPreviewSubtext(val);
+                  updatePreviewDraft({ subtext: val });
+                }}
+                onFontChange={(val) => {
+                  setPreviewFont(val);
+                  updatePreviewDraft({ font: val });
+                }}
+                onColorChange={(val) => {
+                  setPreviewColor(val);
+                  updatePreviewDraft({ color: val });
+                }}
+                onThemeChange={(val) => {
+                  setPreviewTheme(val);
+                  updatePreviewDraft({ theme: val });
+                }}
+              />
             </div>
           )}
         </div>
@@ -820,6 +1079,12 @@ export function CreatePage() {
             <>
               <Gift className="w-5 h-5 text-gold-200" />
               <span>Sign In to Place Order</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </>
+          ) : !user.emailVerified ? (
+            <>
+              <Mail className="w-5 h-5 text-amber-200" />
+              <span>Verify Email to Place Order</span>
               <ArrowRight className="w-4 h-4 ml-1" />
             </>
           ) : (

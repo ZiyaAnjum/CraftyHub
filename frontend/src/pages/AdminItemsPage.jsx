@@ -68,6 +68,7 @@ export function AdminItemsPage() {
     occasionTags: '',
     isFeatured: false,
     isVisible: true,
+    isHamperEligible: true,
   });
 
   const showToast = (message, type = 'success') => {
@@ -107,6 +108,7 @@ export function AdminItemsPage() {
       occasionTags: 'Birthday, Anniversary',
       isFeatured: false,
       isVisible: true,
+      isHamperEligible: true,
     });
     setIsModalOpen(true);
   };
@@ -128,6 +130,7 @@ export function AdminItemsPage() {
       occasionTags: Array.isArray(item.occasionTags) ? item.occasionTags.join(', ') : '',
       isFeatured: !!item.isFeatured,
       isVisible: item.isVisible !== undefined ? !!item.isVisible : true,
+      isHamperEligible: item.isHamperEligible !== false,
     });
     setIsModalOpen(true);
   };
@@ -303,6 +306,7 @@ export function AdminItemsPage() {
       occasionTags: tagsArray,
       isFeatured: formData.isFeatured,
       isVisible: formData.isVisible,
+      isHamperEligible: formData.isHamperEligible,
     };
 
     setFormSubmitting(true);
@@ -515,9 +519,16 @@ export function AdminItemsPage() {
 
                       {/* Category */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blush-50 text-blush-700 border border-blush-100">
-                          {item.category}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blush-50 text-blush-700 border border-blush-100">
+                            {item.category}
+                          </span>
+                          {item.isHamperEligible !== false && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              Hamper-Ready
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Starting Price */}
@@ -970,6 +981,18 @@ export function AdminItemsPage() {
                   />
                   <span className="text-xs font-semibold text-stone-800">
                     Feature in Hero / Featured Showcase
+                  </span>
+                </label>
+
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formData.isHamperEligible}
+                    onChange={(e) => setFormData({ ...formData, isHamperEligible: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-400"
+                  />
+                  <span className="text-xs font-semibold text-stone-800">
+                    Eligible for Hampers (Available in Hamper Studio)
                   </span>
                 </label>
               </div>

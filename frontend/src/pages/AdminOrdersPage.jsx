@@ -32,6 +32,19 @@ const STATUS_FILTERS = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+const OCCASION_FILTERS = [
+  'All',
+  'Birthday',
+  'Anniversary',
+  'Wedding',
+  'Engagement',
+  'Baby Shower',
+  'Housewarming',
+  'Corporate',
+  'Festive',
+  'Unspecified',
+];
+
 export function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +53,7 @@ export function AdminOrdersPage() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [occasionFilter, setOccasionFilter] = useState('All');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [overdueOnly, setOverdueOnly] = useState(false);
@@ -62,6 +76,7 @@ export function AdminOrdersPage() {
       const params = new URLSearchParams();
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (occasionFilter !== 'All') params.append('occasion', occasionFilter);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       if (overdueOnly) params.append('overdue', 'true');
@@ -78,7 +93,7 @@ export function AdminOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter, startDate, endDate, overdueOnly, page, limit]);
+  }, [searchQuery, statusFilter, occasionFilter, startDate, endDate, overdueOnly, page, limit]);
 
   useEffect(() => {
     fetchOrders();
@@ -92,6 +107,7 @@ export function AdminOrdersPage() {
   const handleResetFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
+    setOccasionFilter('All');
     setStartDate('');
     setEndDate('');
     setOverdueOnly(false);
@@ -101,6 +117,7 @@ export function AdminOrdersPage() {
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
     statusFilter !== 'all' ||
+    occasionFilter !== 'All' ||
     startDate !== '' ||
     endDate !== '' ||
     overdueOnly;
@@ -135,12 +152,12 @@ export function AdminOrdersPage() {
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs space-y-4">
-        {/* Row 1: Search and Status Select */}
+        {/* Row 1: Search, Status, Occasion, Overdue */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           {/* Search Input */}
           <form
             onSubmit={handleSearchSubmit}
-            className="md:col-span-6 relative"
+            className="md:col-span-4 relative"
           >
             <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -182,8 +199,26 @@ export function AdminOrdersPage() {
             </select>
           </div>
 
+          {/* Occasion Dropdown */}
+          <div className="md:col-span-3">
+            <select
+              value={occasionFilter}
+              onChange={(e) => {
+                setOccasionFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full py-2.5 px-3 rounded-xl bg-cream-50/50 border border-stone-200 text-xs sm:text-sm text-stone-800 focus:outline-none focus:border-blush-500"
+            >
+              {OCCASION_FILTERS.map((occ) => (
+                <option key={occ} value={occ}>
+                  {occ === 'All' ? 'All Occasions' : occ}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Overdue Only Filter */}
-          <div className="md:col-span-3 flex items-center">
+          <div className="md:col-span-2 flex items-center">
             <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-700 p-2 rounded-xl hover:bg-cream-50 select-none">
               <input
                 type="checkbox"
@@ -349,9 +384,16 @@ export function AdminOrdersPage() {
                               className="w-9 h-9 rounded-lg object-cover bg-stone-100 border border-stone-200 shrink-0"
                               loading="lazy"
                             />
-                            <span className="truncate text-stone-800 font-medium">
-                              {order.item?.title || 'Custom Enquiry'}
-                            </span>
+                            <div className="min-w-0">
+                              <span className="truncate text-stone-800 font-medium block">
+                                {order.item?.title || 'Custom Enquiry'}
+                              </span>
+                              {order.occasion && (
+                                <span className="inline-block text-[10px] text-blush-700 font-medium bg-blush-50 px-1.5 py-0.5 rounded border border-blush-100 mt-0.5">
+                                  {order.occasion}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
 
@@ -439,6 +481,13 @@ export function AdminOrdersPage() {
                       <div className="text-xs text-stone-500 truncate">
                         {order.item?.title || 'Custom Enquiry'}
                       </div>
+                      {order.occasion && (
+                        <div className="mt-0.5">
+                          <span className="inline-block text-[10px] text-blush-700 font-medium bg-blush-50 px-1.5 py-0.5 rounded border border-blush-100">
+                            {order.occasion}
+                          </span>
+                        </div>
+                      )}
                       <div className="text-[11px] text-stone-400">{order.customer?.phone}</div>
                     </div>
                   </div>

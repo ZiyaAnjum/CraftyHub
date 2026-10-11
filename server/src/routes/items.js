@@ -13,6 +13,7 @@ export const formatItemResponse = (item) => {
     priceNote: obj.startingPrice === null ? 'price on request' : 'starting price',
     occasions: obj.occasionTags || [],
     isPublished: obj.isVisible,
+    isHamperEligible: obj.isHamperEligible !== false,
   };
 };
 
@@ -61,6 +62,21 @@ router.get('/', async (req, res, next) => {
         { title: { $regex: escapedQ, $options: 'i' } },
         { description: { $regex: escapedQ, $options: 'i' } },
       ];
+    }
+
+    // Budget range filter (F-03) - safely handles items with null or missing startingPrice
+    const minPrice = parseFloat(req.query.minPrice);
+    const maxPrice = parseFloat(req.query.maxPrice);
+    if ((!isNaN(minPrice) && isFinite(minPrice)) || (!isNaN(maxPrice) && isFinite(maxPrice))) {
+      filter.startingPrice = { $ne: null };
+      if (!isNaN(minPrice) && isFinite(minPrice)) filter.startingPrice.$gte = Math.max(0, minPrice);
+      if (!isNaN(maxPrice) && isFinite(maxPrice)) filter.startingPrice.$lte = Math.max(0, maxPrice);
+    }
+
+    // Hamper-eligible filter (F-40) - items flagged as eligible with a valid unit price
+    if (req.query.hamperEligible === 'true' || req.query.hamperEligible === '1') {
+      filter.isHamperEligible = { $ne: false };
+      filter.startingPrice = { ...(filter.startingPrice || {}), $gt: 0 };
     }
 
     let sortOption = { isFeatured: -1, createdAt: -1, _id: -1 };

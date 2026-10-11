@@ -23,6 +23,10 @@ export function normalizePhone(phone) {
   return digits;
 }
 
+export function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 const getStartOfTodayKolkata = () => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Kolkata',
@@ -36,18 +40,119 @@ const getStartOfTodayKolkata = () => {
   return new Date(`${y}-${m}-${d}T00:00:00.000+05:30`);
 };
 
+export const ALLOWED_FONTS = [
+  "'Playfair Display', Georgia, serif",
+  'Inter, system-ui, sans-serif',
+  'Georgia, serif',
+  "'Courier New', Courier, monospace",
+];
+
+export const ALLOWED_COLORS = [
+  '#C4486A',
+  '#D4AF37',
+  '#1E293B',
+  '#991B1B',
+  '#065F46',
+  '#1E3A8A',
+];
+
+export const ALLOWED_THEMES = ['floral', 'minimal', 'celebration', 'vintage'];
+
+export const BASE_HAMPERS = {
+  velvet_trunk: {
+    id: 'velvet_trunk',
+    name: 'Royal Velvet Keepsake Trunk',
+    price: 899,
+    description: 'Luxury handcrafted trunk in blush velvet with antique brass clasps',
+  },
+  wicker_basket: {
+    id: 'wicker_basket',
+    name: 'Handwoven Artisanal Wicker Basket',
+    price: 499,
+    description: 'Natural eco-friendly willow basket with satin ribbon wrapping',
+  },
+  matte_box: {
+    id: 'matte_box',
+    name: 'Classic Matte Magnetic Gift Box',
+    price: 299,
+    description: 'Rigid luxury gift box with embossed finish and magnetic closure',
+  },
+  wooden_tray: {
+    id: 'wooden_tray',
+    name: 'Carved Wooden Presentation Platter',
+    price: 399,
+    description: 'Rustic solid pine platter with decorative presentation shavings',
+  },
+};
+
+const customizationAnswerSchema = z
+  .object({
+    label: z.string().trim().max(100),
+    value: z.string().trim().max(500),
+  })
+  .superRefine((data, ctx) => {
+    const label = data.label.toLowerCase();
+    const val = data.value.trim();
+
+    if (label === 'custom inscription' || label === 'preview inscription') {
+      if (val.length > 80) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Custom inscription must not exceed 80 characters',
+        });
+      }
+    } else if (label === 'inscription subtitle' || label === 'preview subtitle') {
+      if (val.length > 40) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Inscription subtitle must not exceed 40 characters',
+        });
+      }
+    } else if (label === 'chosen font' || label === 'preview font') {
+      if (!ALLOWED_FONTS.includes(val)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Chosen font must be one of allowed typography styles',
+        });
+      }
+    } else if (label === 'chosen accent color' || label === 'preview color') {
+      if (!ALLOWED_COLORS.map((c) => c.toLowerCase()).includes(val.toLowerCase())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Chosen color must be one of allowed palette hex codes',
+        });
+      }
+    } else if (label === 'chosen frame style' || label === 'preview theme') {
+      if (!ALLOWED_THEMES.includes(val.toLowerCase())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Chosen frame style must be one of: ${ALLOWED_THEMES.join(', ')}`,
+        });
+      }
+    }
+  });
+
+const hamperItemInputSchema = z.object({
+  item: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid item ID in hamper'),
+  quantity: z.number().int().min(1, 'Quantity must be at least 1').max(5, 'Maximum 5 of any single item per hamper'),
+});
+
+const hamperInputSchema = z.object({
+  baseId: z
+    .string()
+    .trim()
+    .refine((val) => Boolean(BASE_HAMPERS[val]), {
+      message: 'Unknown hamper base selection. Please select a valid hamper base.',
+    }),
+  items: z.array(hamperItemInputSchema).min(1, 'A hamper must contain at least 1 item').max(10, 'A hamper can hold a maximum of 10 items'),
+  giftMessage: z.string().trim().max(500, 'Gift message cannot exceed 500 characters').optional().default(''),
+});
+
 const createOrderSchema = z
   .object({
     item: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid item ID').optional().nullable(),
-    customizationAnswers: z
-      .array(
-        z.object({
-          label: z.string().trim().max(100),
-          value: z.string().trim().max(500),
-        })
-      )
-      .optional()
-      .default([]),
+    customizationAnswers: z.array(customizationAnswerSchema).max(20, 'Maximum 20 customization answers allowed').optional().default([]),
+    hamper: hamperInputSchema.optional().nullable(),
     requirements: z.string().trim().max(2000).optional().default(''),
     referenceImages: z
       .array(
@@ -108,6 +213,7 @@ export const clientOrderView = (o) => ({
   user: o.user,
   item: o.item,
   itemSnapshot: o.itemSnapshot || { title: '', image: '' },
+  hamper: o.hamper || null,
   customizationAnswers: o.customizationAnswers || [],
   customer: {
     name: o.customer?.name || '',
@@ -121,6 +227,7 @@ export const clientOrderView = (o) => ({
   status: o.status,
   quotedPrice: o.quotedPrice,
   readyBy: o.readyBy,
+  customerNote: o.customerNote || '', // Customer-visible note from artisan (F-22, F-63)
   statusHistory: (o.statusHistory || []).map(({ status, changedAt }) => ({
     status,
     changedAt,
@@ -142,6 +249,15 @@ router.post(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(401).json({ error: 'Please sign in to continue.' });
 
+      // PRD F-95: Block order placement for unverified users
+      if (!user.emailVerified) {
+        return res.status(403).json({
+          error: 'Please verify your email address before placing an order.',
+          code: 'EMAIL_NOT_VERIFIED',
+          email: user.email,
+        });
+      }
+
       // Cap open orders per user at 10 (counting only active orders: placed, confirmed, in_progress, ready)
       const openOrdersCount = await Order.countDocuments({
         user: user._id,
@@ -161,11 +277,114 @@ router.post(
 
       if (req.body.item) {
         const itemExists = await Item.findById(req.body.item);
-        if (itemExists) {
-          itemRef = itemExists._id;
+        if (!itemExists || itemExists.isVisible === false) {
+          return res.status(400).json({
+            error: 'The selected product is invalid, unpublished, or no longer available.',
+          });
+        }
+        itemRef = itemExists._id;
+        itemSnapshot = {
+          title: itemExists.title,
+          image: itemExists.images?.[0]?.url || '',
+        };
+      }
+
+      // Handle Hamper Recalculation & Security (F-40 to F-42, S-17)
+      let hamperData = null;
+      let serverCalculatedPrice = null;
+
+      if (req.body.hamper) {
+        const { baseId, items: rawHamperItems, giftMessage } = req.body.hamper;
+        const baseInfo = BASE_HAMPERS[baseId];
+        if (!baseInfo) {
+          return res.status(400).json({
+            error: `Invalid or unknown hamper base selection '${baseId}'. Please select a valid hamper base.`,
+          });
+        }
+
+        // Merge duplicate hamper items by itemId before checking per-item and total limits
+        const mergedMap = new Map();
+        for (const entry of rawHamperItems) {
+          const idStr = String(entry.item);
+          const currentQty = mergedMap.get(idStr) || 0;
+          mergedMap.set(idStr, currentQty + Number(entry.quantity));
+        }
+
+        const mergedHamperItems = [];
+        for (const [itemId, qty] of mergedMap.entries()) {
+          if (qty > 5) {
+            return res.status(400).json({
+              error: 'Maximum 5 of any single item allowed per hamper.',
+            });
+          }
+          mergedHamperItems.push({ item: itemId, quantity: qty });
+        }
+
+        const totalQuantity = mergedHamperItems.reduce((sum, i) => sum + i.quantity, 0);
+        if (totalQuantity > 10) {
+          return res.status(400).json({
+            error: 'A hamper can hold a maximum of 10 items total.',
+          });
+        }
+
+        const uniqueIds = mergedHamperItems.map((i) => i.item);
+        const dbItems = await Item.find({
+          _id: { $in: uniqueIds },
+          isVisible: true,
+          isHamperEligible: { $ne: false },
+        }).lean();
+
+        if (dbItems.length !== uniqueIds.length) {
+          return res.status(400).json({
+            error: 'One or more items in the hamper are unpublished, discontinued, ineligible, or do not exist.',
+          });
+        }
+
+        for (const dbItem of dbItems) {
+          if (dbItem.startingPrice === null || dbItem.startingPrice === undefined || dbItem.startingPrice <= 0) {
+            return res.status(400).json({
+              error: `Item "${dbItem.title}" cannot be added to a hamper because it does not have a fixed unit price.`,
+            });
+          }
+        }
+
+        let itemsSubtotal = 0;
+        const validatedHamperItems = mergedHamperItems.map((entry) => {
+          const dbItem = dbItems.find((d) => String(d._id) === String(entry.item));
+          const unitPrice =
+            dbItem.startingPrice !== null && dbItem.startingPrice !== undefined && Number.isFinite(dbItem.startingPrice)
+              ? Number(dbItem.startingPrice)
+              : 0;
+          const totalPrice = unitPrice * entry.quantity;
+          itemsSubtotal += totalPrice;
+
+          return {
+            item: dbItem._id,
+            title: dbItem.title,
+            quantity: entry.quantity,
+            unitPrice,
+            totalPrice,
+            image: dbItem.images?.[0]?.url || '',
+          };
+        });
+
+        serverCalculatedPrice = baseInfo.price + itemsSubtotal;
+
+        hamperData = {
+          base: {
+            id: baseInfo.id,
+            name: baseInfo.name,
+            price: baseInfo.price,
+          },
+          items: validatedHamperItems,
+          giftMessage: giftMessage || '',
+          calculatedTotal: serverCalculatedPrice,
+        };
+
+        if (!itemRef) {
           itemSnapshot = {
-            title: itemExists.title,
-            image: itemExists.images?.[0]?.url || '',
+            title: `Build-Your-Own Hamper (${baseInfo.name})`,
+            image: validatedHamperItems[0]?.image || '',
           };
         }
       }
@@ -177,21 +396,24 @@ router.post(
           ? 'pickup'
           : req.body.address || req.body.customer?.address || '';
 
-      const customerPhone = req.body.phone || req.body.customer?.phone || user.phone;
-
+      // Customer info strictly bound to authenticated session (PRD S-06 / F-10)
       const customer = {
-        name: req.body.customer?.name || user.name,
-        phone: customerPhone,
+        name: user.name,
+        phone: user.phone,
         address: deliveryAddress,
       };
 
       // Consolidate requirements text
       let reqText = req.body.requirements || '';
-      if (!reqText && (req.body.occasion || req.body.customization || req.body.items?.length)) {
+      if (!reqText && (req.body.occasion || req.body.customization || req.body.items?.length || hamperData)) {
         const parts = [];
         if (req.body.occasion) parts.push(`Occasion: ${req.body.occasion}`);
         if (req.body.budget) parts.push(`Budget: ₹${req.body.budget}`);
-        if (req.body.items?.length) {
+        if (hamperData) {
+          parts.push(`Hamper Base: ${hamperData.base.name}`);
+          parts.push(`Hamper Items: ${hamperData.items.map((i) => `${i.title} (x${i.quantity})`).join(', ')}`);
+          if (hamperData.giftMessage) parts.push(`Gift Message: "${hamperData.giftMessage}"`);
+        } else if (req.body.items?.length) {
           parts.push(`Items: ${req.body.items.map((i) => `${i.name || i.title} (x${i.qty || 1})`).join(', ')}`);
         }
         if (req.body.customization) {
@@ -210,10 +432,13 @@ router.post(
         user: user._id,
         item: itemRef,
         itemSnapshot,
+        hamper: hamperData,
+        quotedPrice: serverCalculatedPrice !== null ? serverCalculatedPrice : (req.body.budget || null),
         customizationAnswers: req.body.customizationAnswers || [],
         customer,
         deliveryType: rawDeliveryType,
         requirements: reqText,
+        occasion: req.body.occasion || (hamperData ? 'Hamper Celebration' : ''),
         referenceImages: req.body.referenceImages || [],
         neededByDate,
         status: 'placed',
@@ -292,9 +517,9 @@ router.post('/track', trackLimiter, trackOrderNumberLimiter, validateBody(trackS
     const cleanPhone = normalizePhone(req.body.phone);
     const orderNum = req.body.orderNumber.trim();
 
-    // Query order number case-insensitively
+    // Query order number case-insensitively with regex escaping
     const order = await Order.findOne({
-      orderNumber: { $regex: new RegExp(`^${orderNum}$`, 'i') },
+      orderNumber: { $regex: new RegExp(`^${escapeRegex(orderNum)}$`, 'i') },
     }).populate('item', 'title');
 
     // Mismatch or not found returns the EXACT SAME generic 404 to prevent enumeration
@@ -319,6 +544,7 @@ router.post('/track', trackLimiter, trackOrderNumberLimiter, validateBody(trackS
         })),
         readyBy: order.readyBy,
         quotedPrice: order.quotedPrice,
+        customerNote: order.customerNote || '',
         itemTitle: order.itemSnapshot?.title || order.item?.title || 'Bespoke Custom Creation',
       },
     });
@@ -333,8 +559,8 @@ router.get('/:orderNumberOrId', requireAuth, async (req, res, next) => {
     const query = req.params.orderNumberOrId;
     const filter = { user: req.user.id };
 
-    if (query.startsWith('FC-') || query.startsWith('fc-')) {
-      filter.orderNumber = { $regex: new RegExp(`^${query}$`, 'i') };
+    if (query.toUpperCase().startsWith('FC-')) {
+      filter.orderNumber = { $regex: new RegExp(`^${escapeRegex(query)}$`, 'i') };
     } else if (/^[0-9a-fA-F]{24}$/.test(query)) {
       filter._id = query;
     } else {
@@ -356,8 +582,8 @@ router.patch('/:orderNumberOrId/cancel', requireAuth, async (req, res, next) => 
     const query = req.params.orderNumberOrId;
     const filter = { user: req.user.id };
 
-    if (query.startsWith('FC-') || query.startsWith('fc-')) {
-      filter.orderNumber = { $regex: new RegExp(`^${query}$`, 'i') };
+    if (query.toUpperCase().startsWith('FC-')) {
+      filter.orderNumber = { $regex: new RegExp(`^${escapeRegex(query)}$`, 'i') };
     } else if (/^[0-9a-fA-F]{24}$/.test(query)) {
       filter._id = query;
     } else {

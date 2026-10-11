@@ -4,6 +4,7 @@ import {
   Package,
   ShoppingBag,
   LayoutDashboard,
+  Users,
   LogOut,
   ExternalLink,
   Menu,
@@ -38,6 +39,12 @@ export function AdminLayout() {
       label: 'Orders',
       icon: ShoppingBag,
       description: 'Customer enquiries & workflow',
+    },
+    {
+      to: '/admin/customers',
+      label: 'Customers',
+      icon: Users,
+      description: 'Customer directory & spend history',
     },
     {
       to: '/admin/items',
