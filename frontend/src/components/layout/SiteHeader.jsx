@@ -82,6 +82,10 @@ export function SiteHeader() {
   const whatsappUrl = getShopWhatsAppUrl('Hello Fouzas Creation, I would like to enquire about bespoke gifts.');
   const isWhatsAppExternal = whatsappUrl !== '#';
 
+  const isAccountActive = location.pathname === '/account';
+  const isOrdersActive = location.pathname === '/orders';
+  const isSignInActive = location.pathname === '/signin';
+
   return (
     <>
       <header
@@ -152,32 +156,99 @@ export function SiteHeader() {
           </nav>
 
           {/* 3. Right: Search, Account, Get in Touch, Hamburger */}
-          <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
             {/* Search Button */}
-            <Link
-              to="/explore"
-              aria-label="Search creations catalogue"
-              className={`p-2 rounded-full tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
-                isSolid
-                  ? 'text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
-                  : 'text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
-              }`}
+            <motion.div
+              whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+              whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
             >
-              <Search className="w-5 h-5" />
-            </Link>
+              <Link
+                to="/explore"
+                aria-label="Search creations catalogue"
+                className={`p-2 rounded-full tap-target transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
+                  isSolid
+                    ? 'text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
+                    : 'text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
+                }`}
+              >
+                <Search className="w-5 h-5" />
+              </Link>
+            </motion.div>
 
-            {/* Account / Orders Icon Button */}
-            <Link
-              to={user ? '/orders' : '/signin'}
-              aria-label={user ? 'My Orders and Account' : 'Sign in to account'}
-              className={`p-2 rounded-full tap-target relative transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
-                isSolid
-                  ? 'text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
-                  : 'text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
-              }`}
-            >
-              {user ? <Package className="w-5 h-5" /> : <User className="w-5 h-5" />}
-            </Link>
+            {user ? (
+              <>
+                {/* Orders Button */}
+                <motion.div
+                  whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+                  whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+                >
+                  <Link
+                    to="/orders"
+                    aria-label="My Orders"
+                    aria-current={isOrdersActive ? 'page' : undefined}
+                    className={`p-2 rounded-full tap-target relative transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
+                      isOrdersActive
+                        ? isSolid
+                          ? 'border-[#C4486A]/40 bg-blush-100/80 text-[#C4486A] shadow-xs'
+                          : 'border-white/50 bg-white/20 text-white shadow-xs'
+                        : isSolid
+                          ? 'border-transparent text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
+                          : 'border-transparent text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
+                    }`}
+                  >
+                    <Package className="w-5 h-5" />
+                  </Link>
+                </motion.div>
+
+                {/* Account / Profile Button */}
+                <motion.div
+                  whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+                  whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+                >
+                  <Link
+                    to="/account"
+                    aria-label="Account profile and settings"
+                    aria-current={isAccountActive ? 'page' : undefined}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full tap-target transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
+                      isAccountActive
+                        ? isSolid
+                          ? 'border-[#C4486A]/40 bg-blush-100/80 text-[#C4486A] font-medium shadow-xs'
+                          : 'border-white/50 bg-white/25 text-white font-medium shadow-xs'
+                        : isSolid
+                          ? 'border-transparent text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
+                          : 'border-transparent text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
+                    }`}
+                  >
+                    <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="hidden sm:inline text-xs font-medium tracking-wide">Account</span>
+                  </Link>
+                </motion.div>
+              </>
+            ) : (
+              /* Logged-out user: Keep Sign In button */
+              <motion.div
+                whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+                whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+              >
+                <Link
+                  to="/signin"
+                  aria-label="Sign in to account"
+                  aria-current={isSignInActive ? 'page' : undefined}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full tap-target transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E0BC6A] ${
+                    isSignInActive
+                      ? isSolid
+                        ? 'border-[#C4486A]/40 bg-blush-100/80 text-[#C4486A] font-medium shadow-xs'
+                        : 'border-white/50 bg-white/25 text-white font-medium shadow-xs'
+                      : isSolid
+                        ? 'border-transparent text-stone-700 hover:text-stone-950 hover:bg-stone-100/70'
+                        : 'border-transparent text-white/95 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]'
+                  }`}
+                >
+                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline text-xs font-medium tracking-wide">Sign In</span>
+                </Link>
+              </motion.div>
+            )}
 
             {/* Outline pill button "Get in Touch" */}
             {isWhatsAppExternal ? (
@@ -292,21 +363,51 @@ export function SiteHeader() {
               ))}
 
               {user ? (
-                <Link
-                  to="/account"
-                  onClick={() => setIsOpen(false)}
-                  className="font-display text-2xl text-stone-300 hover:text-white tap-target"
-                >
-                  My Profile ({user.name?.split(' ')[0]})
-                </Link>
+                <div className="flex flex-col gap-3">
+                  <motion.div whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}>
+                    <Link
+                      to="/account"
+                      onClick={() => setIsOpen(false)}
+                      aria-label="Account profile and settings"
+                      aria-current={isAccountActive ? 'page' : undefined}
+                      className={`flex items-center gap-3 font-display text-2xl sm:text-3xl transition-colors tap-target ${
+                        isAccountActive ? 'text-[#C4486A] font-medium' : 'text-stone-200 hover:text-white'
+                      }`}
+                    >
+                      <User className="w-6 h-6 text-blush-400 shrink-0" />
+                      <span>Account ({user.name?.split(' ')[0] || 'Profile'})</span>
+                    </Link>
+                  </motion.div>
+                  <motion.div whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}>
+                    <Link
+                      to="/orders"
+                      onClick={() => setIsOpen(false)}
+                      aria-label="My Orders"
+                      aria-current={isOrdersActive ? 'page' : undefined}
+                      className={`flex items-center gap-3 font-display text-2xl sm:text-3xl transition-colors tap-target ${
+                        isOrdersActive ? 'text-[#C4486A] font-medium' : 'text-stone-200 hover:text-white'
+                      }`}
+                    >
+                      <Package className="w-6 h-6 text-gold-400 shrink-0" />
+                      <span>My Orders</span>
+                    </Link>
+                  </motion.div>
+                </div>
               ) : (
-                <Link
-                  to="/signin"
-                  onClick={() => setIsOpen(false)}
-                  className="font-display text-2xl text-[#C4486A] hover:text-white tap-target"
-                >
-                  Sign In / Register
-                </Link>
+                <motion.div whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}>
+                  <Link
+                    to="/signin"
+                    onClick={() => setIsOpen(false)}
+                    aria-label="Sign in to your account"
+                    aria-current={isSignInActive ? 'page' : undefined}
+                    className={`flex items-center gap-3 font-display text-2xl sm:text-3xl transition-colors tap-target ${
+                      isSignInActive ? 'text-[#C4486A] font-medium' : 'text-[#C4486A] hover:text-white'
+                    }`}
+                  >
+                    <User className="w-6 h-6 shrink-0" />
+                    <span>Sign In / Register</span>
+                  </Link>
+                </motion.div>
               )}
             </nav>
 

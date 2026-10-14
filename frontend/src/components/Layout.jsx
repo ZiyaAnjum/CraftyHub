@@ -74,6 +74,7 @@ export function Layout() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  aria-label={item.label}
                   className={({ isActive }) =>
                     `flex flex-col items-center justify-center tap-target relative -top-3 ${
                       isActive ? 'scale-105' : ''
@@ -95,6 +96,7 @@ export function Layout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                aria-label={item.label}
                 className={({ isActive }) =>
                   `flex flex-col items-center justify-center py-1 px-2 rounded-xl tap-target transition-colors ${
                     isActive ? 'text-blush-600 font-semibold' : 'text-stone-500 hover:text-stone-800'
