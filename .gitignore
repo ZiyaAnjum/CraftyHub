@@ -2,3 +2,7 @@
 tmp-tests/
 TEST_REPORT_*.md
 MIGRATION_PLAN.md
+
+brag-output/
+.agents/skills/brag/
+skills-lock.json
