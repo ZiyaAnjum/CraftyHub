@@ -8,6 +8,7 @@ import { validateBody } from '../middleware/validate.js';
 import { uploadSingleImage } from '../middleware/upload.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js';
 import { formatItemResponse } from './items.js';
+import { isHttpUrl } from './templates.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -295,8 +296,15 @@ router.get('/stats', async (req, res, next) => {
 // GET /api/admin/orders
 router.get('/orders', async (req, res, next) => {
   try {
-    const { status, occasion, startDate, endDate, search, q, overdue, page, limit } = req.query;
+    const { status, occasion, startDate, endDate, search, q, overdue, page, limit, orderType } = req.query;
     const filter = {};
+
+    // Filter by orderType if specified (Amendment 2: { $ne: 'video' } for gifts)
+    if (orderType === 'video') {
+      filter.orderType = 'video';
+    } else if (orderType === 'gift') {
+      filter.orderType = { $ne: 'video' };
+    }
 
     // Search by order number, customer name, customer phone
     const searchTerm = (search || q || '').trim();
@@ -393,6 +401,7 @@ router.get('/orders', async (req, res, next) => {
       Order.find(filter)
         .populate('user', 'name email phone')
         .populate('item', 'title category startingPrice images')
+        .populate('template', 'title category basePrice previewVideoUrl thumbnailUrl')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
@@ -437,7 +446,8 @@ router.get('/orders/:orderNumberOrId', async (req, res, next) => {
 
     const order = await Order.findOne(filter)
       .populate('user', 'name email phone')
-      .populate('item');
+      .populate('item')
+      .populate('template');
 
     if (!order) return res.status(404).json({ error: 'Order not found.' });
 
@@ -461,6 +471,18 @@ const updateOrderSchema = z
     adminNotes: z.string().trim().max(1000).optional(),
     customerNote: z.string().trim().max(500).optional(), // alias
     quotedPrice: z.number().min(0).optional().nullable(),
+    deliveryLink: z
+      .string()
+      .trim()
+      .refine(
+        (url) => {
+          if (!url) return true;
+          return isHttpUrl(url);
+        },
+        { message: 'Delivery link must be a valid HTTP or HTTPS URL' }
+      )
+      .optional()
+      .nullable(),
     readyBy: z
       .preprocess((val) => {
         if (val === null || val === undefined || val === '') return null;
@@ -501,10 +523,28 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
       quotedPrice,
       readyBy,
       note,
+      deliveryLink,
     } = req.body;
     const isOverride = !!(forceStatusOverride || overrideStatus);
 
-    // 1. Enforce sensible status transitions:
+    // 1. Enforce video-only statuses: block draft_shared and changes_requested for gift orders (Amendment 3)
+    if (order.orderType !== 'video' && ['draft_shared', 'changes_requested'].includes(status)) {
+      return res.status(400).json({
+        error: `Status "${status}" is only applicable to video orders.`,
+      });
+    }
+
+    // 2. Require valid deliveryLink before moving video order to ready or delivered (Amendment 6)
+    if (order.orderType === 'video' && ['ready', 'delivered'].includes(status)) {
+      const effectiveDeliveryLink = (deliveryLink !== undefined ? deliveryLink : order.deliveryLink) || '';
+      if (!effectiveDeliveryLink || !isHttpUrl(effectiveDeliveryLink.trim())) {
+        return res.status(400).json({
+          error: 'A valid delivery link (HTTP or HTTPS URL) is required before moving a video order to Ready or Delivered.',
+        });
+      }
+    }
+
+    // 3. Enforce sensible status transitions:
     // No moving out of delivered or cancelled without an explicit admin override flag
     if (
       ['delivered', 'cancelled'].includes(order.status) &&
@@ -517,7 +557,7 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
       });
     }
 
-    // 2. Require readyBy when moving to "confirmed" unless already set
+    // 4. Require readyBy when moving to "confirmed" unless already set
     if (status === 'confirmed') {
       const effectiveReadyBy = readyBy !== undefined ? readyBy : order.readyBy;
       if (!effectiveReadyBy) {
@@ -527,7 +567,7 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
       }
     }
 
-    // 3. Ready-by date validation
+    // 5. Ready-by date validation
     if (readyBy !== undefined) {
       if (readyBy !== null) {
         const readyTime = new Date(readyBy).getTime();
@@ -549,7 +589,12 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
       }
     }
 
-    // 4. Append every change to statusHistory with timestamp and optional note
+    // 6. Update deliveryLink if provided
+    if (deliveryLink !== undefined) {
+      order.deliveryLink = deliveryLink ? deliveryLink.trim() : '';
+    }
+
+    // 7. Append every change to statusHistory with timestamp and optional note
     const statusChanged = status && status !== order.status;
     const defaultStatusNote = statusChanged ? `Status updated to ${status} by admin` : null;
     const entryNote = note || defaultStatusNote;
@@ -577,7 +622,8 @@ router.patch('/orders/:orderNumberOrId', validateBody(updateOrderSchema), async 
     await order.save();
     const updated = await Order.findById(order._id)
       .populate('user', 'name email phone')
-      .populate('item');
+      .populate('item')
+      .populate('template');
 
     res.json({
       order: {

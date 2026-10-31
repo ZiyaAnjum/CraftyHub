@@ -18,6 +18,28 @@ export const ORDER_STATUSES = [
   'placed',
   'confirmed',
   'in_progress',
+  'draft_shared',
+  'changes_requested',
+  'ready',
+  'delivered',
+  'cancelled',
+];
+
+export const GIFT_ORDER_STATUSES = [
+  'placed',
+  'confirmed',
+  'in_progress',
+  'ready',
+  'delivered',
+  'cancelled',
+];
+
+export const VIDEO_ORDER_STATUSES = [
+  'placed',
+  'confirmed',
+  'in_progress',
+  'draft_shared',
+  'changes_requested',
   'ready',
   'delivered',
   'cancelled',
@@ -75,10 +97,28 @@ const hamperSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const templateSnapshotSchema = new mongoose.Schema(
+  {
+    title: { type: String, default: '' },
+    previewVideoUrl: { type: String, default: '' },
+    thumbnailUrl: { type: String, default: '' },
+    basePrice: { type: Number, default: 0 },
+    deliveryDays: { type: Number, default: 2 },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     orderNumber: { type: String, unique: true, index: true },
+    orderType: {
+      type: String,
+      enum: ['gift', 'video'],
+      default: 'gift',
+      index: true,
+    },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    // Gift specific references
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
     itemSnapshot: {
       title: { type: String, default: '' },
@@ -86,8 +126,19 @@ const orderSchema = new mongoose.Schema(
     },
     hamper: { type: hamperSchema, default: null },
     customizationAnswers: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // Video specific references
+    template: { type: mongoose.Schema.Types.ObjectId, ref: 'Template', default: null },
+    templateSnapshot: { type: templateSnapshotSchema, default: null },
+    customizationType: { type: String, enum: ['same', 'changes'], default: 'same' },
+    customizationNotes: { type: String, trim: true, maxlength: 2000, default: '' },
+    eventDate: { type: Date, default: null },
+    onScreenText: { type: String, trim: true, maxlength: 2000, default: '' },
+    assetLinks: { type: [String], default: [] },
+    musicPreference: { type: String, trim: true, maxlength: 500, default: '' },
+    deliveryLink: { type: String, trim: true, default: '' },
+    // Shared customer & logistics
     customer: { type: customerInfoSchema, required: true },
-    deliveryType: { type: String, enum: ['delivery', 'pickup'], default: 'delivery' },
+    deliveryType: { type: String, enum: ['delivery', 'pickup', 'digital'], default: 'delivery' },
     requirements: { type: String, trim: true, maxlength: 2000, default: '' },
     referenceImages: { type: [referenceImageSchema], default: [] },
     neededByDate: { type: Date, default: null },
@@ -123,6 +174,7 @@ orderSchema.pre('validate', async function (next) {
 
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ orderType: 1, createdAt: -1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ readyBy: 1 });
 

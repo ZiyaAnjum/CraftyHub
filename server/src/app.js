@@ -15,6 +15,7 @@ import adminRoutes from './routes/admin.js';
 import itemRoutes from './routes/items.js';
 import previewRoutes from './routes/previews.js';
 import builderRoutes from './routes/builder.js';
+import { publicTemplateRoutes, adminTemplateRoutes } from './routes/templates.js';
 
 const app = express();
 
@@ -78,6 +79,8 @@ app.use('/api/items', itemRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/builder', builderRoutes);
+app.use('/api/templates', publicTemplateRoutes);
+app.use('/api/admin/templates', adminTemplateRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

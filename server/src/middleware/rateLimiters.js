@@ -19,6 +19,7 @@ export const resendVerificationLimiter = make(15 * 60 * 1000, 5, 'Too many verif
 export const forgotPasswordLimiter = make(15 * 60 * 1000, 5, 'Too many password reset requests. Please try again in 15 minutes.');
 export const orderLimiter = make(60 * 60 * 1000, 20, 'Too many orders submitted. Please try again later.');
 export const builderLimiter = make(15 * 60 * 1000, 30, 'Too many builder requests. Please try again in a few minutes.');
+export const uploadLimiter = make(15 * 60 * 1000, 30, 'Too many upload attempts. Please try again later.');
 
 export const orderUserLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

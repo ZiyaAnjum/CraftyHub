@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { Order, ORDER_STATUSES } from '../models/Order.js';
 import { User } from '../models/User.js';
 import { Item } from '../models/Item.js';
+import { Template } from '../models/Template.js';
+import { isHttpUrl } from './templates.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { orderLimiter, orderUserLimiter, trackLimiter, trackOrderNumberLimiter } from '../middleware/rateLimiters.js';
@@ -206,15 +208,80 @@ const createOrderSchema = z
   })
   .strict();
 
+export const createVideoOrderSchema = z
+  .object({
+    orderType: z.literal('video'),
+    templateId: z.string().trim().regex(/^[0-9a-fA-F]{24}$/, 'Invalid template ID'),
+    customizationType: z.enum(['same', 'changes']).default('same'),
+    customizationNotes: z.string().trim().max(2000).optional().default(''),
+    onScreenText: z
+      .string()
+      .trim()
+      .min(3, 'Please provide on-screen text details (names, dates, venue, etc.)')
+      .max(2000),
+    eventDate: z
+      .any()
+      .transform((val, ctx) => {
+        if (val === null || val === undefined || val === '') return null;
+        const d = new Date(val);
+        if (isNaN(d.getTime())) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Event date must be a valid date' });
+          return z.NEVER;
+        }
+        return d;
+      })
+      .optional()
+      .nullable(),
+    assetLinks: z
+      .array(
+        z.string().trim().refine(isHttpUrl, { message: 'Each asset link must be an HTTP or HTTPS URL' })
+      )
+      .max(10, 'A maximum of 10 asset links are allowed')
+      .optional()
+      .default([]),
+    musicPreference: z.string().trim().max(500).optional().default(''),
+    deliveryType: z.literal('digital').optional().default('digital'),
+    phone: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number').optional(),
+    customer: z
+      .object({
+        name: z.string().trim().min(2).max(80).optional(),
+        phone: z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number').optional(),
+        address: z.string().trim().max(500).optional().default(''),
+      })
+      .optional(),
+  })
+  .strict();
+
+const validateOrderBody = (req, res, next) => {
+  if (req.body?.orderType === 'video') {
+    return validateBody(createVideoOrderSchema)(req, res, next);
+  }
+  return validateBody(createOrderSchema)(req, res, next);
+};
+
 export const clientOrderView = (o) => ({
   id: o._id,
   orderNumber: o.orderNumber,
   orderId: o.orderNumber, // alias for backwards compatibility
+  orderType: o.orderType || 'gift',
   user: o.user,
+  // Gift specific references
   item: o.item,
   itemSnapshot: o.itemSnapshot || { title: '', image: '' },
   hamper: o.hamper || null,
   customizationAnswers: o.customizationAnswers || [],
+  // Video specific references
+  template: o.template,
+  templateSnapshot: o.templateSnapshot || null,
+  customizationType: o.customizationType || 'same',
+  customizationNotes: o.customizationNotes || '',
+  eventDate: o.eventDate || null,
+  onScreenText: o.onScreenText || '',
+  assetLinks: o.assetLinks || [],
+  musicPreference: o.musicPreference || '',
+  // Customer can see deliveryLink only when order is ready or delivered (Amendment 6)
+  deliveryLink: ['ready', 'delivered'].includes(o.status) ? o.deliveryLink || '' : '',
+  // Shared customer & order details
   customer: {
     name: o.customer?.name || '',
     phone: o.customer?.phone || '',
@@ -243,7 +310,7 @@ router.post(
   requireAuth,
   orderLimiter,
   orderUserLimiter,
-  validateBody(createOrderSchema),
+  validateOrderBody,
   async (req, res, next) => {
     try {
       const user = await User.findById(req.user.id);
@@ -258,10 +325,10 @@ router.post(
         });
       }
 
-      // Cap open orders per user at 10 (counting only active orders: placed, confirmed, in_progress, ready)
+      // Cap open orders per user at 10 (counting active orders across both gift and video)
       const openOrdersCount = await Order.countDocuments({
         user: user._id,
-        status: { $in: ['placed', 'confirmed', 'in_progress', 'ready'] },
+        status: { $in: ['placed', 'confirmed', 'in_progress', 'draft_shared', 'changes_requested', 'ready'] },
       });
       if (openOrdersCount >= 10) {
         return res.status(400).json({
@@ -269,6 +336,66 @@ router.post(
         });
       }
 
+      // --- VIDEO ORDER BRANCH (Amendment 1) ---
+      if (req.body?.orderType === 'video') {
+        const template = await Template.findById(req.body.templateId);
+        if (!template || !template.isActive) {
+          return res.status(400).json({
+            error: 'The selected video template is unavailable, hidden, or does not exist.',
+          });
+        }
+
+        const rawPhone = user.phone || req.body.customer?.phone || req.body.phone;
+        const cleanPhone = normalizePhone(rawPhone);
+        if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+          return res.status(400).json({
+            error: 'A valid 10-digit mobile number is required to place an order.',
+          });
+        }
+        if (!user.phone) {
+          user.phone = cleanPhone;
+          await user.save().catch(() => {});
+        }
+        const customerName = (user.name || req.body.customer?.name || 'Valued Customer').trim();
+
+        const videoOrder = await Order.create({
+          orderType: 'video',
+          user: user._id,
+          template: template._id,
+          templateSnapshot: {
+            title: template.title,
+            previewVideoUrl: template.previewVideoUrl,
+            thumbnailUrl: template.thumbnailUrl,
+            basePrice: template.basePrice,
+            deliveryDays: template.deliveryDays || 2,
+          },
+          customizationType: req.body.customizationType || 'same',
+          customizationNotes: req.body.customizationNotes || '',
+          eventDate: req.body.eventDate || null,
+          onScreenText: req.body.onScreenText || '',
+          assetLinks: req.body.assetLinks || [],
+          musicPreference: req.body.musicPreference || '',
+          deliveryLink: '',
+          customer: {
+            name: customerName,
+            phone: cleanPhone,
+            address: 'Digital Delivery',
+          },
+          deliveryType: 'digital',
+          requirements: req.body.onScreenText || '',
+          neededByDate: req.body.eventDate || null,
+          status: 'placed',
+          quotedPrice: null, // Amendment 7: Store template price in templateSnapshot.basePrice; quotedPrice set when admin confirms
+          statusHistory: [
+            { status: 'placed', changedAt: new Date(), note: 'Video order placed by customer' },
+          ],
+        });
+
+        const populated = await Order.findById(videoOrder._id).populate('template');
+        return res.status(201).json({ order: clientOrderView(populated) });
+      }
+
+      // --- EXISTING GIFT & HAMPER PIPELINE (100% UNTOUCHED) ---
       let itemRef = null;
       let itemSnapshot = {
         title: 'Bespoke Custom Creation',
@@ -396,10 +523,22 @@ router.post(
           ? 'pickup'
           : req.body.address || req.body.customer?.address || '';
 
+      const rawGiftPhone = user.phone || req.body.customer?.phone || req.body.phone;
+      const cleanGiftPhone = normalizePhone(rawGiftPhone);
+      if (!cleanGiftPhone || !/^[6-9]\d{9}$/.test(cleanGiftPhone)) {
+        return res.status(400).json({
+          error: 'A valid 10-digit mobile number is required to place an order.',
+        });
+      }
+      if (!user.phone) {
+        user.phone = cleanGiftPhone;
+        await user.save().catch(() => {});
+      }
+
       // Customer info strictly bound to authenticated session (PRD S-06 / F-10)
       const customer = {
-        name: user.name,
-        phone: user.phone,
+        name: (user.name || req.body.customer?.name || 'Valued Customer').trim(),
+        phone: cleanGiftPhone,
         address: deliveryAddress,
       };
 
@@ -496,6 +635,7 @@ router.get('/mine', requireAuth, async (req, res, next) => {
   try {
     const orders = await Order.find({ user: req.user.id })
       .populate('item', 'title category startingPrice images')
+      .populate('template', 'title category basePrice previewVideoUrl thumbnailUrl')
       .sort({ createdAt: -1 })
       .limit(100);
     res.json({ orders: orders.map(clientOrderView) });
@@ -520,7 +660,9 @@ router.post('/track', trackLimiter, trackOrderNumberLimiter, validateBody(trackS
     // Query order number case-insensitively with regex escaping
     const order = await Order.findOne({
       orderNumber: { $regex: new RegExp(`^${escapeRegex(orderNum)}$`, 'i') },
-    }).populate('item', 'title');
+    })
+      .populate('item', 'title')
+      .populate('template', 'title');
 
     // Mismatch or not found returns the EXACT SAME generic 404 to prevent enumeration
     if (!order) {
@@ -534,9 +676,11 @@ router.post('/track', trackLimiter, trackOrderNumberLimiter, validateBody(trackS
 
     // Return strictly sanitized public tracking information
     // No address, phone, email, images, or admin notes!
+    // Never return assetLinks. Return deliveryLink ONLY when status is ready or delivered (Amendment 6 & 7)
     res.json({
       order: {
         orderNumber: order.orderNumber,
+        orderType: order.orderType || 'gift',
         status: order.status,
         statusTimeline: (order.statusHistory || []).map(({ status, changedAt }) => ({
           status,
@@ -545,7 +689,13 @@ router.post('/track', trackLimiter, trackOrderNumberLimiter, validateBody(trackS
         readyBy: order.readyBy,
         quotedPrice: order.quotedPrice,
         customerNote: order.customerNote || '',
-        itemTitle: order.itemSnapshot?.title || order.item?.title || 'Bespoke Custom Creation',
+        itemTitle:
+          order.templateSnapshot?.title ||
+          order.template?.title ||
+          order.itemSnapshot?.title ||
+          order.item?.title ||
+          'Bespoke Custom Creation',
+        deliveryLink: ['ready', 'delivered'].includes(order.status) ? order.deliveryLink || '' : undefined,
       },
     });
   } catch (err) {
@@ -567,7 +717,9 @@ router.get('/:orderNumberOrId', requireAuth, async (req, res, next) => {
       return res.status(404).json({ error: 'Order not found.' });
     }
 
-    const order = await Order.findOne(filter).populate('item', 'title category startingPrice images');
+    const order = await Order.findOne(filter)
+      .populate('item', 'title category startingPrice images')
+      .populate('template', 'title category basePrice previewVideoUrl thumbnailUrl');
     if (!order) return res.status(404).json({ error: 'Order not found.' });
 
     res.json({ order: clientOrderView(order) });
