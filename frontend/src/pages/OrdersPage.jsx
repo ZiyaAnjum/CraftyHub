@@ -17,21 +17,14 @@ import {
   MessageCircle,
   ChevronDown,
   ChevronUp,
+  Film,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
-import { StatusBadge } from '../components/StatusBadge';
+import { StatusBadge, getOrderMilestoneSteps, getOrderStepIndex } from '../components/StatusBadge';
 import { OrderCardSkeleton } from '../components/Skeleton';
 import { formatKolkataDateTime, formatKolkataDate } from '../lib/date';
 import { getShopWhatsAppUrl, getOrderWhatsAppUrl } from '../lib/whatsapp';
 import { useNoIndex } from '../hooks/useNoIndex';
-
-const STATUS_STEPS = [
-  { key: 'placed', label: 'Placed' },
-  { key: 'confirmed', label: 'Confirmed' },
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'ready', label: 'Ready' },
-  { key: 'delivered', label: 'Delivered' },
-];
 
 export function OrdersPage() {
   useNoIndex();
@@ -93,10 +86,6 @@ export function OrdersPage() {
     }
   };
 
-  const getStepIndex = (status) => {
-    if (status === 'cancelled') return -1;
-    return STATUS_STEPS.findIndex((s) => s.key === status);
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
@@ -195,13 +184,22 @@ export function OrdersPage() {
       {!loading && !error && orders.length > 0 && (
         <div className="space-y-6">
           {orders.map((order) => {
-            const currentStepIdx = getStepIndex(order.status);
+            const isVideo = order.orderType === 'video';
+            const milestoneSteps = getOrderMilestoneSteps(order.orderType, order.status);
+            const currentStepIdx = getOrderStepIndex(order.orderType, order.status);
             const isExpanded = Boolean(expandedOrders[order.orderNumber || order.id]);
 
             const itemTitle =
-              order.itemSnapshot?.title || order.item?.title || 'Bespoke Custom Creation';
+              order.templateSnapshot?.title ||
+              order.template?.title ||
+              order.itemSnapshot?.title ||
+              order.item?.title ||
+              'Bespoke Custom Creation';
             const itemImage =
-              order.itemSnapshot?.image || order.item?.images?.[0]?.url;
+              order.templateSnapshot?.thumbnailUrl ||
+              order.template?.thumbnailUrl ||
+              order.itemSnapshot?.image ||
+              order.item?.images?.[0]?.url;
 
             const whatsappUrl = getOrderWhatsAppUrl(order, 'status');
 
@@ -221,7 +219,7 @@ export function OrdersPage() {
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-blush-50 text-blush-600 flex items-center justify-center shrink-0 border border-blush-100">
-                        <Gift className="w-6 h-6" />
+                        {isVideo ? <Film className="w-6 h-6" /> : <Gift className="w-6 h-6" />}
                       </div>
                     )}
                     <div>
@@ -229,6 +227,12 @@ export function OrdersPage() {
                         <span className="font-mono text-sm sm:text-base font-bold text-blush-700">
                           #{order.orderNumber}
                         </span>
+                        {isVideo && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold uppercase tracking-wider">
+                            <Film className="w-3 h-3" />
+                            Video
+                          </span>
+                        )}
                         <span className="text-[11px] text-stone-400 font-medium">
                           • {formatKolkataDate(order.createdAt)}
                         </span>
@@ -240,7 +244,7 @@ export function OrdersPage() {
                   </div>
 
                   <div className="flex items-center gap-2.5">
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.status} orderType={order.orderType} />
                   </div>
                 </div>
 
@@ -261,7 +265,7 @@ export function OrdersPage() {
                         </div>
                       ) : (
                         <p className="text-xs text-stone-600 font-medium italic mt-0.5">
-                          Pending review by artisan
+                          {isVideo ? 'Starting price on template • Final quote pending review' : 'Pending review by artisan'}
                         </p>
                       )}
                     </div>
@@ -287,6 +291,98 @@ export function OrdersPage() {
                   </div>
                 </div>
 
+                {/* Video Highlights (Event Date, Customization Mode) */}
+                {isVideo && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="p-3.5 rounded-2xl bg-cream-50/70 border border-stone-200/60">
+                      <span className="text-[11px] uppercase tracking-wider font-semibold text-stone-400 block">
+                        Event Date
+                      </span>
+                      <span className="font-medium text-stone-900 text-xs mt-0.5 block">
+                        {order.eventDate ? formatKolkataDate(order.eventDate) : 'Not specified'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-cream-50/70 border border-stone-200/60">
+                      <span className="text-[11px] uppercase tracking-wider font-semibold text-stone-400 block">
+                        Customization Mode
+                      </span>
+                      <span className="font-medium text-stone-900 text-xs mt-0.5 block">
+                        {order.customizationType === 'changes' ? 'With Slight Changes' : 'Same as Template'}
+                      </span>
+                      {order.customizationNotes && (
+                        <p className="text-[11px] text-stone-600 mt-1 italic line-clamp-1">
+                          "{order.customizationNotes}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Video Review State Alerts */}
+                {isVideo && order.status === 'draft_shared' && (
+                  <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-start gap-2.5">
+                      <Film className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <strong className="font-bold text-indigo-950 block">Draft Shared for Review</strong>
+                        <p className="text-indigo-800 leading-relaxed">
+                          We have shared a preview draft of your video invitation! Please check the names, dates, text, and photos. If you'd like any minor adjustments, click below to request changes.
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={getOrderWhatsAppUrl(order, 'changes')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors shrink-0 tap-target"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Request changes on WhatsApp</span>
+                    </a>
+                  </div>
+                )}
+
+                {isVideo && order.status === 'changes_requested' && (
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs">
+                    <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <strong className="font-bold text-amber-950 block">Changes in Progress</strong>
+                      <p className="text-amber-800 leading-relaxed">
+                        We received your change request. Our video designers are revising your video according to your notes and will share an updated draft soon.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Final Video Download Callout (Only when ready or delivered and deliveryLink exists) */}
+                {isVideo && order.deliveryLink && ['ready', 'delivered'].includes(order.status) && (
+                  <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 shadow-soft">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Film className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <strong className="text-emerald-950 font-bold text-sm block">
+                          Your Final Video Is Ready!
+                        </strong>
+                        <span className="text-xs text-emerald-800">
+                          Download your full HD 1080p MP4 file to share with family and friends.
+                        </span>
+                      </div>
+                    </div>
+                    <a
+                      href={order.deliveryLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md transition-all shrink-0 tap-target"
+                    >
+                      <span>Watch / Download Your Video</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                )}
+
                 {/* Milestone Progress Bar */}
                 {order.status === 'cancelled' ? (
                   <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
@@ -296,14 +392,14 @@ export function OrdersPage() {
                 ) : (
                   <div className="pt-2">
                     <div className="flex items-center justify-between relative overflow-x-auto pb-2 no-scrollbar">
-                      {STATUS_STEPS.map((step, idx) => {
+                      {milestoneSteps.map((step, idx) => {
                         const isDone = currentStepIdx >= idx;
                         const isCurrent = order.status === step.key;
 
                         return (
                           <div key={step.key} className="flex-1 min-w-[65px] text-center relative">
                             {/* Connecting Bar */}
-                            {idx < STATUS_STEPS.length - 1 && (
+                            {idx < milestoneSteps.length - 1 && (
                               <div
                                 className={`absolute left-1/2 right-[-50%] top-3 h-0.5 z-0 ${
                                   currentStepIdx > idx ? 'bg-emerald-500' : 'bg-stone-200'
@@ -363,6 +459,48 @@ export function OrdersPage() {
                         transition={{ duration: 0.2 }}
                         className="space-y-3 pt-3 overflow-hidden text-xs text-stone-700"
                       >
+                        {/* Video Order Breakdown */}
+                        {order.orderType === 'video' && (
+                          <div className="p-4 rounded-2xl bg-cream-100/70 border border-blush-200 space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-blush-200/60 pb-2">
+                              <div className="flex items-center gap-2">
+                                <Film className="w-4 h-4 text-rose-600" />
+                                <span className="font-bold text-stone-900">
+                                  Video Template: {order.templateSnapshot?.title || order.template?.title || 'Custom Video'}
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full bg-white text-rose-700 text-[10px] font-semibold border border-blush-100">
+                                {order.customizationType === 'changes' ? 'With Changes' : 'As-Is Template'}
+                              </span>
+                            </div>
+                            {order.onScreenText && (
+                              <div>
+                                <span className="font-semibold text-stone-900 block text-[11px]">On-Screen Text Details:</span>
+                                <p className="whitespace-pre-line text-stone-600 mt-0.5">{order.onScreenText}</p>
+                              </div>
+                            )}
+                            {order.customizationNotes && (
+                              <div>
+                                <span className="font-semibold text-stone-900 block text-[11px]">Customization Notes:</span>
+                                <p className="whitespace-pre-line text-stone-600 mt-0.5">{order.customizationNotes}</p>
+                              </div>
+                            )}
+                            {order.deliveryLink && ['ready', 'delivered'].includes(order.status) && (
+                              <div className="pt-2">
+                                <a
+                                  href={order.deliveryLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold text-xs shadow-xs hover:bg-emerald-700 transition-colors"
+                                >
+                                  <span>Watch / Download Video</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Hamper Breakdown (F-40 to F-42) */}
                         {order.hamper && (
                           <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-3">
@@ -502,7 +640,15 @@ export function OrdersPage() {
                         {/* Fulfilment & Contact Info */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                           <div className="flex items-start gap-2">
-                            {order.deliveryType === 'pickup' ? (
+                            {order.orderType === 'video' ? (
+                              <>
+                                <Film className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <strong className="text-stone-900 block">Digital Delivery</strong>
+                                  <span className="text-stone-500">Delivered via cloud drive link (Full HD 1080p)</span>
+                                </div>
+                              </>
+                            ) : order.deliveryType === 'pickup' ? (
                               <>
                                 <Store className="w-4 h-4 text-blush-600 shrink-0 mt-0.5" />
                                 <div>
@@ -524,9 +670,17 @@ export function OrdersPage() {
                           <div className="flex items-start gap-2">
                             <Calendar className="w-4 h-4 text-blush-600 shrink-0 mt-0.5" />
                             <div>
-                              <strong className="text-stone-900 block">Needed-By Date</strong>
+                              <strong className="text-stone-900 block">
+                                {order.orderType === 'video' ? 'Event Date' : 'Needed-By Date'}
+                              </strong>
                               <span className="text-stone-500">
-                                {order.neededByDate ? formatKolkataDate(order.neededByDate) : 'Not specified'}
+                                {order.orderType === 'video'
+                                  ? order.eventDate
+                                    ? formatKolkataDate(order.eventDate)
+                                    : 'Not specified'
+                                  : order.neededByDate
+                                  ? formatKolkataDate(order.neededByDate)
+                                  : 'Not specified'}
                               </span>
                             </div>
                           </div>

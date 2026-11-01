@@ -85,7 +85,13 @@ export function buildOrderWhatsAppMessage(order, action = 'confirm') {
   const isHamper = !!order.hamper?.items?.length;
 
   let productSummary = '';
-  if (isHamper) {
+  if (order.orderType === 'video') {
+    productSummary =
+      order.templateSnapshot?.title ||
+      order.template?.title ||
+      order.itemTitle ||
+      'Video Invitation';
+  } else if (isHamper) {
     const baseName = order.hamper.base?.name || 'Custom Hamper';
     const totalItems = order.hamper.items.reduce((acc, i) => acc + (i.quantity || 1), 0);
     productSummary = `${baseName} (${totalItems} items)`;
@@ -95,6 +101,10 @@ export function buildOrderWhatsAppMessage(order, action = 'confirm') {
       order.item?.title ||
       order.itemTitle ||
       'Bespoke Creation';
+  }
+
+  if (action === 'changes') {
+    return `Hello Fouzas Creation! Regarding order #${orderNumber} (${productSummary}): I have reviewed the draft and would like to request changes: `;
   }
 
   if (action === 'status') {
@@ -108,7 +118,7 @@ export function buildOrderWhatsAppMessage(order, action = 'confirm') {
  * Generates a direct WhatsApp link for a specific order.
  *
  * @param {object} order
- * @param {'confirm'|'status'} [action='confirm']
+ * @param {'confirm'|'status'|'changes'} [action='confirm']
  * @returns {string} wa.me link
  */
 export function getOrderWhatsAppUrl(order, action = 'confirm') {

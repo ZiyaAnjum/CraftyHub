@@ -228,6 +228,13 @@ export const createVideoOrderSchema = z
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Event date must be a valid date' });
           return z.NEVER;
         }
+        if (d < getStartOfTodayKolkata()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Event date cannot be in the past',
+          });
+          return z.NEVER;
+        }
         return d;
       })
       .optional()
@@ -250,7 +257,19 @@ export const createVideoOrderSchema = z
       })
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.customizationType === 'changes') {
+      const notes = (data.customizationNotes || '').trim();
+      if (!notes || notes.length < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['customizationNotes'],
+          message: 'Please provide notes describing your desired changes (at least 3 characters).',
+        });
+      }
+    }
+  });
 
 const validateOrderBody = (req, res, next) => {
   if (req.body?.orderType === 'video') {
@@ -356,7 +375,22 @@ router.post(
           user.phone = cleanPhone;
           await user.save().catch(() => {});
         }
-        const customerName = (user.name || req.body.customer?.name || 'Valued Customer').trim();
+        // Accidental duplicate order guard (same user + same template + same onScreenText within 60s)
+        const sixtySecondsAgo = new Date(Date.now() - 60 * 1000);
+        const duplicateOrder = await Order.findOne({
+          user: user._id,
+          orderType: 'video',
+          template: template._id,
+          onScreenText: req.body.onScreenText.trim(),
+          createdAt: { $gte: sixtySecondsAgo },
+        }).populate('template');
+
+        if (duplicateOrder) {
+          return res.status(409).json({
+            error: 'A video order with the same details was just submitted. Please check your orders.',
+            order: clientOrderView(duplicateOrder),
+          });
+        }
 
         const videoOrder = await Order.create({
           orderType: 'video',
@@ -370,7 +404,7 @@ router.post(
             deliveryDays: template.deliveryDays || 2,
           },
           customizationType: req.body.customizationType || 'same',
-          customizationNotes: req.body.customizationNotes || '',
+          customizationNotes: req.body.customizationType === 'changes' ? (req.body.customizationNotes || '').trim() : '',
           eventDate: req.body.eventDate || null,
           onScreenText: req.body.onScreenText || '',
           assetLinks: req.body.assetLinks || [],

@@ -12,20 +12,13 @@ import {
   ArrowRight,
   ShieldCheck,
   RefreshCw,
+  Film,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
-import { StatusBadge } from '../components/StatusBadge';
+import { StatusBadge, getOrderMilestoneSteps, getOrderStepIndex } from '../components/StatusBadge';
 import { formatKolkataDateTime, formatKolkataDate } from '../lib/date';
 import { getShopWhatsAppUrl, getOrderWhatsAppUrl } from '../lib/whatsapp';
 import { useNoIndex } from '../hooks/useNoIndex';
-
-const ORDER_STEPS = [
-  { key: 'placed', label: 'Placed', desc: 'Order received' },
-  { key: 'confirmed', label: 'Confirmed', desc: 'Crafting scheduled' },
-  { key: 'in_progress', label: 'In Progress', desc: 'Artisans crafting' },
-  { key: 'ready', label: 'Ready', desc: 'Ready for pickup/dispatch' },
-  { key: 'delivered', label: 'Delivered', desc: 'Delivered / Completed' },
-];
 
 export function TrackPage() {
   useNoIndex();
@@ -84,12 +77,8 @@ export function TrackPage() {
     executeTrack();
   };
 
-  const getStepIndex = (status) => {
-    if (status === 'cancelled') return -1;
-    return ORDER_STEPS.findIndex((s) => s.key === status);
-  };
-
-  const currentStepIdx = order ? getStepIndex(order.status) : -1;
+  const milestoneSteps = order ? getOrderMilestoneSteps(order.orderType, order.status) : [];
+  const currentStepIdx = order ? getOrderStepIndex(order.orderType, order.status) : -1;
 
   const whatsappUrl = order
     ? getOrderWhatsAppUrl(order, 'status')
@@ -216,19 +205,27 @@ export function TrackPage() {
               <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">
                 Order Reference
               </span>
-              <span className="font-mono text-xl font-bold text-blush-700">
-                #{order.orderNumber}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xl font-bold text-blush-700">
+                  #{order.orderNumber}
+                </span>
+                {order.orderType === 'video' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold uppercase tracking-wider">
+                    <Film className="w-3 h-3" />
+                    Video
+                  </span>
+                )}
+              </div>
             </div>
 
-            <StatusBadge status={order.status} />
+            <StatusBadge status={order.status} orderType={order.orderType} />
           </div>
 
           {/* Item & Price Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl bg-cream-50 border border-stone-200/60">
               <span className="text-xs text-stone-400 font-medium uppercase tracking-wider block">
-                Item
+                {order.orderType === 'video' ? 'Video Template' : 'Item'}
               </span>
               <h3 className="font-serif font-bold text-stone-900 text-base mt-0.5">
                 {order.itemTitle}
@@ -246,7 +243,7 @@ export function TrackPage() {
                   </span>
                 ) : (
                   <span className="text-xs font-medium text-stone-600 italic">
-                    Pending review by artisan
+                    {order.orderType === 'video' ? 'Starting price on template • Final quote pending review' : 'Pending review by artisan'}
                   </span>
                 )}
               </div>
@@ -273,18 +270,67 @@ export function TrackPage() {
             </div>
           </div>
 
-          {/* Artisan Customer-Visible Note (F-22, F-63) */}
-          {order.customerNote && (
-            <div className="p-4 rounded-2xl bg-blush-50/70 border border-blush-200 flex items-start gap-3">
-              <MessageCircle className="w-5 h-5 text-blush-600 shrink-0 mt-0.5" />
+          {/* Video Review State Alerts */}
+          {order.orderType === 'video' && order.status === 'draft_shared' && (
+            <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start gap-2.5">
+                <Film className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <strong className="font-bold text-indigo-950 block">Draft Shared for Review</strong>
+                  <p className="text-indigo-800 leading-relaxed">
+                    We have shared a preview draft of your video invitation! If you'd like any minor adjustments or revisions, request changes directly on WhatsApp.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={getOrderWhatsAppUrl(order, 'changes')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors shrink-0 tap-target"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>Request changes on WhatsApp</span>
+              </a>
+            </div>
+          )}
+
+          {order.orderType === 'video' && order.status === 'changes_requested' && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs">
+              <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <span className="text-xs font-bold text-blush-950 block">
-                  Artisan Message
-                </span>
-                <p className="text-xs text-stone-700 italic leading-relaxed">
-                  "{order.customerNote}"
+                <strong className="font-bold text-amber-950 block">Changes in Progress</strong>
+                <p className="text-amber-800 leading-relaxed">
+                  We received your change request. Our video designers are revising your video according to your notes and will share an updated draft soon.
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Final Video Download Callout (Only when ready or delivered and deliveryLink exists) */}
+          {order.orderType === 'video' && order.deliveryLink && ['ready', 'delivered'].includes(order.status) && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Film className="w-5 h-5" />
+                </div>
+                <div>
+                  <strong className="text-emerald-950 font-bold text-sm block">
+                    Your Final Video Is Ready!
+                  </strong>
+                  <span className="text-xs text-emerald-800">
+                    Download your full HD 1080p MP4 file to share with family and friends.
+                  </span>
+                </div>
+              </div>
+              <a
+                href={order.deliveryLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md transition-all shrink-0 tap-target"
+              >
+                <span>Watch / Download Video</span>
+                <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
           )}
 
@@ -300,7 +346,7 @@ export function TrackPage() {
               </h4>
 
               <div className="space-y-3">
-                {ORDER_STEPS.map((step, idx) => {
+                {milestoneSteps.map((step, idx) => {
                   const isDone = currentStepIdx >= idx;
                   const isCurrent = order.status === step.key;
 
@@ -310,7 +356,7 @@ export function TrackPage() {
                   return (
                     <div key={step.key} className="flex items-start gap-3 relative">
                       {/* Vertical line connecting nodes */}
-                      {idx < ORDER_STEPS.length - 1 && (
+                      {idx < milestoneSteps.length - 1 && (
                         <div
                           className={`absolute left-[13px] top-[26px] bottom-[-14px] w-0.5 ${
                             currentStepIdx > idx ? 'bg-emerald-500' : 'bg-stone-200'

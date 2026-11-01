@@ -21,6 +21,8 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { GiftBuilderPage } from './pages/GiftBuilderPage';
 import { HamperBuilderPage } from './pages/HamperBuilderPage';
+import { TemplatesPage } from './pages/TemplatesPage';
+import { TemplateDetailPage } from './pages/TemplateDetailPage';
 
 // Admin Pages (Lazy loaded with React.lazy + Suspense so customers never download admin code)
 const AdminDashboardPage = React.lazy(() =>
@@ -69,6 +71,8 @@ export default function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="explore" element={<ExplorePage />} />
+          <Route path="templates" element={<TemplatesPage />} />
+          <Route path="templates/:slug" element={<TemplateDetailPage />} />
           <Route path="gifts/:slug" element={<LegacyGiftRedirect />} />
           <Route path="items/:slug" element={<ItemDetailPage />} />
           <Route path="gift-builder" element={<GiftBuilderPage />} />

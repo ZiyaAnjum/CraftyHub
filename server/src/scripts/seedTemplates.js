@@ -88,7 +88,7 @@ async function seed() {
   console.log('Seeding sample placeholder video templates...');
 
   let createdCount = 0;
-  let updatedCount = 0;
+  let skippedCount = 0;
 
   for (const item of SAMPLE_TEMPLATES) {
     const slug = slugifyTemplate(item.title);
@@ -99,13 +99,12 @@ async function seed() {
       createdCount++;
       console.log(`+ Created template: "${item.title}" (${slug})`);
     } else {
-      await Template.updateOne({ slug }, { $set: item });
-      updatedCount++;
-      console.log(`~ Updated existing template: "${item.title}" (${slug})`);
+      skippedCount++;
+      console.log(`- Skipped existing template (preserving edits): "${item.title}" (${slug})`);
     }
   }
 
-  console.log(`Done! Created: ${createdCount}, Updated: ${updatedCount}`);
+  console.log(`Done! Created: ${createdCount}, Skipped: ${skippedCount}`);
   await mongoose.disconnect();
 }
 

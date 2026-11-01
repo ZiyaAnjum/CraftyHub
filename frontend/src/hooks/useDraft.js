@@ -27,6 +27,14 @@ export function clearDraftStorage() {
     sessionStorage.removeItem('fc_order_draft');
     localStorage.removeItem(DRAFT_STORAGE_KEY);
     localStorage.removeItem('fc_order_draft');
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith('fouzas_video_order_')) {
+          sessionStorage.removeItem(key);
+        }
+      }
+    }
   } catch {
     // Ignore storage errors
   }

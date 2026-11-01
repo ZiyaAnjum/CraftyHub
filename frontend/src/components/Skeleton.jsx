@@ -60,3 +60,22 @@ export function ItemCardSkeleton() {
   );
 }
 
+export function TemplateCardSkeleton() {
+  return (
+    <div className="bg-white rounded-3xl border border-blush-100/80 overflow-hidden shadow-soft flex flex-col justify-between">
+      <div>
+        <Skeleton className="aspect-[9/16] w-full rounded-none" />
+        <div className="p-4 sm:p-5 space-y-2.5">
+          <Skeleton className="h-4 w-1/3 rounded-full" />
+          <Skeleton className="h-5 w-5/6 rounded-md" />
+          <Skeleton className="h-3.5 w-1/2 rounded" />
+        </div>
+      </div>
+      <div className="p-4 sm:p-5 pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+        <Skeleton className="h-6 w-20 rounded" />
+        <Skeleton className="h-8 w-24 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
