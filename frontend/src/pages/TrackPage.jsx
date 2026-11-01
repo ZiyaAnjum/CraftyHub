@@ -241,9 +241,13 @@ export function TrackPage() {
                   <span className="font-serif font-bold text-stone-900 text-lg">
                     ₹{Number(order.quotedPrice).toLocaleString('en-IN')}
                   </span>
+                ) : order.orderType === 'video' ? (
+                  <span className="text-xs font-medium text-stone-700">
+                    Starting from ₹{Number(order.templateSnapshot?.basePrice || 0).toLocaleString('en-IN')} - final price confirmed by us
+                  </span>
                 ) : (
                   <span className="text-xs font-medium text-stone-600 italic">
-                    {order.orderType === 'video' ? 'Starting price on template • Final quote pending review' : 'Pending review by artisan'}
+                    Pending review by artisan
                   </span>
                 )}
               </div>
@@ -350,8 +354,8 @@ export function TrackPage() {
                   const isDone = currentStepIdx >= idx;
                   const isCurrent = order.status === step.key;
 
-                  // Find milestone timestamp if recorded in timeline
-                  const historyEntry = order.statusTimeline?.find((h) => h.status === step.key);
+                  // Find latest milestone timestamp if recorded in timeline
+                  const historyEntry = [...(order.statusTimeline || [])].reverse().find((h) => h.status === step.key);
 
                   return (
                     <div key={step.key} className="flex items-start gap-3 relative">

@@ -263,9 +263,13 @@ export function OrdersPage() {
                           </span>
                           <span className="text-xs text-stone-400">INR</span>
                         </div>
+                      ) : isVideo ? (
+                        <p className="text-xs text-stone-700 font-medium mt-0.5">
+                          Starting from ₹{Number(order.templateSnapshot?.basePrice || order.template?.basePrice || 0).toLocaleString('en-IN')} - final price confirmed by us
+                        </p>
                       ) : (
                         <p className="text-xs text-stone-600 font-medium italic mt-0.5">
-                          {isVideo ? 'Starting price on template • Final quote pending review' : 'Pending review by artisan'}
+                          Pending review by artisan
                         </p>
                       )}
                     </div>

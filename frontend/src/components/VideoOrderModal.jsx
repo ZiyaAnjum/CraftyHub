@@ -341,7 +341,18 @@ export function VideoOrderModal({ isOpen, onClose, template }) {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.data?.code === 'EMAIL_NOT_VERIFIED' || err.status === 403) {
+        if (err.status === 409) {
+          const duplicateOrderNum = err.data?.order?.orderNumber || '';
+          if (duplicateOrderNum) {
+            setFormError(
+              `An order with these exact details was just placed as #${duplicateOrderNum}. Please check "My Orders" to track your video creation.`
+            );
+          } else {
+            setFormError(
+              'A video order with these exact details was just placed. Please check "My Orders" to track your video creation.'
+            );
+          }
+        } else if (err.data?.code === 'EMAIL_NOT_VERIFIED' || err.status === 403) {
           setFormError('Please verify your email address before placing an order.');
         } else if (Array.isArray(err.details) && err.details.length > 0) {
           const mapped = {};
