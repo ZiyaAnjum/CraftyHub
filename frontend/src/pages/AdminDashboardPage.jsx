@@ -367,10 +367,24 @@ export function AdminDashboardPage() {
                       <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                         {/* Thumbnail */}
                         <div className="w-12 h-12 rounded-xl bg-stone-100 overflow-hidden border border-stone-200 shrink-0">
-                          {order.item?.images?.[0]?.url ? (
+                          {order.orderType === 'video' ? (
                             <img
-                              src={order.item.images[0].url}
-                              alt={order.item.title}
+                              src={
+                                order.templateSnapshot?.thumbnailUrl ||
+                                order.template?.thumbnailUrl ||
+                                'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80'
+                              }
+                              alt="Video Template"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : order.item?.images?.[0]?.url || order.itemSnapshot?.image || order.hamper?.base?.image ? (
+                            <img
+                              src={
+                                order.item?.images?.[0]?.url ||
+                                order.itemSnapshot?.image ||
+                                order.hamper?.base?.image
+                              }
+                              alt={order.item?.title || 'Order'}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -386,7 +400,12 @@ export function AdminDashboardPage() {
                             <span className="font-mono text-xs font-bold text-blush-700">
                               {order.orderNumber}
                             </span>
-                            <StatusBadge status={order.status} />
+                            {order.orderType === 'video' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Video
+                              </span>
+                            )}
+                            <StatusBadge status={order.status} orderType={order.orderType} />
 
                             {overdue && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
@@ -411,7 +430,9 @@ export function AdminDashboardPage() {
                           <div className="text-xs sm:text-sm font-semibold text-stone-900 truncate">
                             {order.customer?.name} •{' '}
                             <span className="font-normal text-stone-600">
-                              {order.item?.title || 'Bespoke Order'}
+                              {order.orderType === 'video'
+                                ? `Video Template: ${order.templateSnapshot?.title || order.template?.title || 'Custom Video'}`
+                                : order.item?.title || order.itemSnapshot?.title || (order.hamper ? (order.hamper.title || 'Curated Hamper') : 'Bespoke Order')}
                             </span>
                           </div>
 
@@ -720,21 +741,30 @@ export function AdminDashboardPage() {
                             overdue ? 'bg-rose-50/30' : ''
                           }`}
                         >
-                          <td className="py-3 px-4 sm:px-6 font-mono font-bold text-blush-700">
-                            {o.orderNumber}
+                          <td className="py-3 px-4 sm:px-6 font-mono font-bold text-blush-700 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span>{o.orderNumber}</span>
+                              {o.orderType === 'video' && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  Video
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4">
                             <div className="font-semibold text-stone-900">{o.customer?.name}</div>
                             <div className="text-[11px] text-stone-400">{o.customer?.phone}</div>
                           </td>
-                          <td className="py-3 px-4 max-w-[180px] truncate text-stone-700">
-                            {o.item?.title || 'Custom Request'}
+                          <td className="py-3 px-4 max-w-[200px] truncate text-stone-700">
+                            {o.orderType === 'video'
+                              ? `Video Template: ${o.templateSnapshot?.title || o.template?.title || 'Custom Video'}`
+                              : o.item?.title || o.itemSnapshot?.title || (o.hamper ? (o.hamper.title || 'Curated Hamper') : 'Custom Request')}
                           </td>
                           <td className="py-3 px-4 text-stone-500 whitespace-nowrap text-[11px]">
                             {formatKolkataDateTime(o.createdAt)}
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">
-                            <StatusBadge status={o.status} />
+                            <StatusBadge status={o.status} orderType={o.orderType} />
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap text-[11px]">
                             {o.readyBy ? (

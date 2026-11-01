@@ -17,6 +17,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Film,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -27,6 +28,8 @@ const STATUS_FILTERS = [
   { value: 'placed', label: 'New / Placed' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'in_progress', label: 'In Progress' },
+  { value: 'draft_shared', label: 'Draft Shared' },
+  { value: 'changes_requested', label: 'Changes Requested' },
   { value: 'ready', label: 'Ready' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'cancelled', label: 'Cancelled' },
@@ -52,6 +55,7 @@ export function AdminOrdersPage() {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
+  const [orderTypeFilter, setOrderTypeFilter] = useState('all'); // 'all' | 'gift' | 'video'
   const [statusFilter, setStatusFilter] = useState('all');
   const [occasionFilter, setOccasionFilter] = useState('All');
   const [startDate, setStartDate] = useState('');
@@ -75,6 +79,7 @@ export function AdminOrdersPage() {
 
       const params = new URLSearchParams();
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (orderTypeFilter !== 'all') params.append('orderType', orderTypeFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (occasionFilter !== 'All') params.append('occasion', occasionFilter);
       if (startDate) params.append('startDate', startDate);
@@ -93,7 +98,7 @@ export function AdminOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter, occasionFilter, startDate, endDate, overdueOnly, page, limit]);
+  }, [searchQuery, orderTypeFilter, statusFilter, occasionFilter, startDate, endDate, overdueOnly, page, limit]);
 
   useEffect(() => {
     fetchOrders();
@@ -106,6 +111,7 @@ export function AdminOrdersPage() {
 
   const handleResetFilters = () => {
     setSearchQuery('');
+    setOrderTypeFilter('all');
     setStatusFilter('all');
     setOccasionFilter('All');
     setStartDate('');
@@ -116,6 +122,7 @@ export function AdminOrdersPage() {
 
   const hasActiveFilters =
     searchQuery.trim() !== '' ||
+    orderTypeFilter !== 'all' ||
     statusFilter !== 'all' ||
     occasionFilter !== 'All' ||
     startDate !== '' ||
@@ -152,6 +159,34 @@ export function AdminOrdersPage() {
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200/90 shadow-2xs space-y-4">
+        {/* Row 0: Order Type Filter (All, Gifts, Videos) */}
+        <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-stone-100">
+          <span className="text-xs font-bold text-stone-500 uppercase tracking-wider mr-1">
+            Order Type:
+          </span>
+          {[
+            { value: 'all', label: 'All Orders' },
+            { value: 'gift', label: 'Gifts & Hampers' },
+            { value: 'video', label: 'Video Invitations' },
+          ].map((ot) => (
+            <button
+              key={ot.value}
+              type="button"
+              onClick={() => {
+                setOrderTypeFilter(ot.value);
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                orderTypeFilter === ot.value
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {ot.label}
+            </button>
+          ))}
+        </div>
+
         {/* Row 1: Search, Status, Occasion, Overdue */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           {/* Search Input */}
@@ -336,9 +371,24 @@ export function AdminOrdersPage() {
                 <tbody className="divide-y divide-stone-100 font-medium text-stone-800">
                   {orders.map((order) => {
                     const overdue = isOrderOverdue(order);
-                    const thumb =
-                      order.item?.images?.[0]?.url ||
-                      'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80';
+                    const isVideo = order.orderType === 'video';
+                    const isHamper = !!order.hamper?.items?.length;
+                    const thumb = isVideo
+                      ? order.templateSnapshot?.thumbnailUrl ||
+                        order.template?.thumbnailUrl ||
+                        'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80'
+                      : isHamper
+                      ? order.hamper?.base?.image ||
+                        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'
+                      : order.item?.images?.[0]?.url ||
+                        order.itemSnapshot?.image ||
+                        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80';
+
+                    const itemTitle = isVideo
+                      ? order.templateSnapshot?.title || order.template?.title || 'Video Template'
+                      : isHamper
+                      ? `Custom Hamper (${order.hamper.base?.name || 'Hamper'})`
+                      : order.item?.title || order.itemSnapshot?.title || 'Custom Enquiry';
 
                     return (
                       <tr
@@ -361,6 +411,11 @@ export function AdminOrdersPage() {
                             >
                               {order.orderNumber}
                             </Link>
+                            {isVideo && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Video
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -380,17 +435,22 @@ export function AdminOrdersPage() {
                           <div className="flex items-center gap-2.5 max-w-[220px]">
                             <img
                               src={thumb}
-                              alt={order.item?.title || 'Order'}
+                              alt={itemTitle}
                               className="w-9 h-9 rounded-lg object-cover bg-stone-100 border border-stone-200 shrink-0"
                               loading="lazy"
                             />
                             <div className="min-w-0">
                               <span className="truncate text-stone-800 font-medium block">
-                                {order.item?.title || 'Custom Enquiry'}
+                                {itemTitle}
                               </span>
                               {order.occasion && (
                                 <span className="inline-block text-[10px] text-blush-700 font-medium bg-blush-50 px-1.5 py-0.5 rounded border border-blush-100 mt-0.5">
                                   {order.occasion}
+                                </span>
+                              )}
+                              {isVideo && (
+                                <span className="inline-block text-[10px] text-indigo-700 font-medium bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 mt-0.5">
+                                  {order.customizationType === 'changes' ? 'With Changes' : 'As-Is Template'}
                                 </span>
                               )}
                             </div>
@@ -404,7 +464,7 @@ export function AdminOrdersPage() {
 
                         {/* Status */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <StatusBadge status={order.status} />
+                          <StatusBadge status={order.status} orderType={order.orderType} />
                         </td>
 
                         {/* Ready By */}
@@ -445,6 +505,25 @@ export function AdminOrdersPage() {
           <div className="md:hidden space-y-3">
             {orders.map((order) => {
               const overdue = isOrderOverdue(order);
+              const isVideo = order.orderType === 'video';
+              const isHamper = !!order.hamper?.items?.length;
+              const thumb = isVideo
+                ? order.templateSnapshot?.thumbnailUrl ||
+                  order.template?.thumbnailUrl ||
+                  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80'
+                : isHamper
+                ? order.hamper?.base?.image ||
+                  'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'
+                : order.item?.images?.[0]?.url ||
+                  order.itemSnapshot?.image ||
+                  'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80';
+
+              const itemTitle = isVideo
+                ? order.templateSnapshot?.title || order.template?.title || 'Video Template'
+                : isHamper
+                ? `Custom Hamper (${order.hamper.base?.name || 'Hamper'})`
+                : order.item?.title || order.itemSnapshot?.title || 'Custom Enquiry';
+
               return (
                 <Link
                   key={order.orderNumber}
@@ -461,17 +540,19 @@ export function AdminOrdersPage() {
                       <span className="font-mono text-sm font-bold text-blush-700">
                         {order.orderNumber}
                       </span>
+                      {isVideo && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          Video
+                        </span>
+                      )}
                     </div>
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.status} orderType={order.orderType} />
                   </div>
 
                   <div className="flex items-center gap-3">
                     <img
-                      src={
-                        order.item?.images?.[0]?.url ||
-                        'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80'
-                      }
-                      alt="Thumbnail"
+                      src={thumb}
+                      alt={itemTitle}
                       className="w-12 h-12 rounded-xl object-cover bg-stone-100 border border-stone-200 shrink-0"
                     />
                     <div className="min-w-0">
@@ -479,12 +560,19 @@ export function AdminOrdersPage() {
                         {order.customer?.name || 'Customer'}
                       </div>
                       <div className="text-xs text-stone-500 truncate">
-                        {order.item?.title || 'Custom Enquiry'}
+                        {itemTitle}
                       </div>
                       {order.occasion && (
                         <div className="mt-0.5">
                           <span className="inline-block text-[10px] text-blush-700 font-medium bg-blush-50 px-1.5 py-0.5 rounded border border-blush-100">
                             {order.occasion}
+                          </span>
+                        </div>
+                      )}
+                      {isVideo && (
+                        <div className="mt-0.5">
+                          <span className="inline-block text-[10px] text-indigo-700 font-medium bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                            {order.customizationType === 'changes' ? 'With Changes' : 'As-Is Template'}
                           </span>
                         </div>
                       )}

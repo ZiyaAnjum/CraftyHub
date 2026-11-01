@@ -67,8 +67,20 @@ export function VideoOrderModal({ isOpen, onClose, template }) {
 
   const triggerRef = useRef(null);
 
-  // Today's date in YYYY-MM-DD for min date attribute
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Today's date in YYYY-MM-DD for min date attribute (Asia/Kolkata)
+  const todayStr = (() => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+    } catch {
+      return new Date().toISOString().split('T')[0];
+    }
+  })();
+  const [duplicateOrderNumber, setDuplicateOrderNumber] = useState(null);
 
   // Store trigger button on open
   useEffect(() => {
@@ -284,6 +296,7 @@ export function VideoOrderModal({ isOpen, onClose, template }) {
     if (submitting) return;
 
     setFormError(null);
+    setDuplicateOrderNumber(null);
     setFieldErrors({});
 
     // Check signed-in state
@@ -340,19 +353,25 @@ export function VideoOrderModal({ isOpen, onClose, template }) {
         sessionStorage.removeItem(storageKey);
       }
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 409) {
-          const duplicateOrderNum = err.data?.order?.orderNumber || '';
-          if (duplicateOrderNum) {
-            setFormError(
-              `An order with these exact details was just placed as #${duplicateOrderNum}. Please check "My Orders" to track your video creation.`
-            );
-          } else {
-            setFormError(
-              'A video order with these exact details was just placed. Please check "My Orders" to track your video creation.'
-            );
-          }
-        } else if (err.data?.code === 'EMAIL_NOT_VERIFIED' || err.status === 403) {
+      if (err.status === 409 || err.statusCode === 409) {
+        const duplicateOrderNum =
+          err.data?.order?.orderNumber ||
+          err.raw?.order?.orderNumber ||
+          err.data?.order?.orderId ||
+          err.raw?.order?.orderId ||
+          '';
+        setDuplicateOrderNumber(duplicateOrderNum || null);
+        if (duplicateOrderNum) {
+          setFormError(
+            `An order with these exact details was just placed as #${duplicateOrderNum}. Please check "My Orders" to track your video creation.`
+          );
+        } else {
+          setFormError(
+            'A video order with these exact details was just placed. Please check "My Orders" to track your video creation.'
+          );
+        }
+      } else if (err instanceof ApiError) {
+        if (err.data?.code === 'EMAIL_NOT_VERIFIED' || err.status === 403) {
           setFormError('Please verify your email address before placing an order.');
         } else if (Array.isArray(err.details) && err.details.length > 0) {
           const mapped = {};
@@ -364,7 +383,7 @@ export function VideoOrderModal({ isOpen, onClose, template }) {
           setFormError(err.message || 'Unable to place order. Please review details.');
         }
       } else {
-        setFormError('Network error. Please check your connection and try again.');
+        setFormError(err.message || 'Network error. Please check your connection and try again.');
       }
     } finally {
       setSubmitting(false);
@@ -515,6 +534,16 @@ export function VideoOrderModal({ isOpen, onClose, template }) {
                     <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                     <span>{formError}</span>
                   </div>
+                  {duplicateOrderNumber && (
+                    <div className="pt-1.5 flex items-center gap-2">
+                      <a
+                        href="/orders"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition-colors"
+                      >
+                        Track Order #{duplicateOrderNumber} in My Orders
+                      </a>
+                    </div>
+                  )}
                   {user && !user.emailVerified && (
                     <div className="pt-2">
                       <button

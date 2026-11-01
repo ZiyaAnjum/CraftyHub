@@ -12,6 +12,7 @@ import {
   Sparkles,
   ShieldCheck,
   ChevronRight,
+  Film,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNoIndex } from '../../hooks/useNoIndex';
@@ -51,6 +52,12 @@ export function AdminLayout() {
       label: 'Catalogue Items',
       icon: Package,
       description: 'Manage items, pricing & visibility',
+    },
+    {
+      to: '/admin/templates',
+      label: 'Video Templates',
+      icon: Film,
+      description: 'Manage video templates, pricing & uploads',
     },
   ];
 

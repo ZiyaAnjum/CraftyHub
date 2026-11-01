@@ -170,7 +170,12 @@ const createOrderSchema = z
       .any()
       .transform((val, ctx) => {
         if (val === null || val === undefined || val === '') return null;
-        const d = new Date(val);
+        let d;
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+          d = new Date(`${val.trim()}T00:00:00.000+05:30`);
+        } else {
+          d = new Date(val);
+        }
         if (isNaN(d.getTime())) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -223,7 +228,12 @@ export const createVideoOrderSchema = z
       .any()
       .transform((val, ctx) => {
         if (val === null || val === undefined || val === '') return null;
-        const d = new Date(val);
+        let d;
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+          d = new Date(`${val.trim()}T00:00:00.000+05:30`);
+        } else {
+          d = new Date(val);
+        }
         if (isNaN(d.getTime())) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Event date must be a valid date' });
           return z.NEVER;

@@ -11,6 +11,7 @@ export class ApiError extends Error {
     this.status = status;
     this.details = details; // Array of { field, message } from server validation
     this.raw = raw;
+    this.data = raw;
   }
 
   // Get first error message for a specific form field if present

@@ -437,8 +437,11 @@ export function AdminCustomersPage() {
                   </div>
 
                   {customerOrdersData.orders.map((order) => {
+                    const isVideo = order.orderType === 'video';
                     const isHamper = !!order.hamper?.items?.length;
-                    const displayTitle = isHamper
+                    const displayTitle = isVideo
+                      ? `Video Template: ${order.templateSnapshot?.title || order.template?.title || 'Custom Video'}`
+                      : isHamper
                       ? `Custom Hamper (${order.hamper.base?.name || 'Hamper'})`
                       : order.item?.title || order.itemSnapshot?.title || 'Custom Creation';
 
@@ -453,7 +456,12 @@ export function AdminCustomersPage() {
                               <span className="font-mono font-bold text-xs sm:text-sm text-blush-700">
                                 {order.orderNumber}
                               </span>
-                              <StatusBadge status={order.status} />
+                              {isVideo && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  Video
+                                </span>
+                              )}
+                              <StatusBadge status={order.status} orderType={order.orderType} />
                             </div>
                             <h4 className="font-serif font-bold text-stone-900 mt-1">
                               {displayTitle}
@@ -472,7 +480,7 @@ export function AdminCustomersPage() {
                               )}
                             </div>
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                              {order.deliveryType}
+                              {isVideo ? 'Digital Delivery' : order.deliveryType}
                             </span>
                           </div>
                         </div>

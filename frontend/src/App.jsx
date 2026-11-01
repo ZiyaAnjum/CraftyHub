@@ -37,6 +37,9 @@ const AdminOrderDetailPage = React.lazy(() =>
 const AdminItemsPage = React.lazy(() =>
   import('./pages/AdminItemsPage').then((m) => ({ default: m.AdminItemsPage }))
 );
+const AdminTemplatesPage = React.lazy(() =>
+  import('./pages/AdminTemplatesPage').then((m) => ({ default: m.AdminTemplatesPage }))
+);
 const AdminCustomersPage = React.lazy(() =>
   import('./pages/AdminCustomersPage').then((m) => ({ default: m.AdminCustomersPage }))
 );
@@ -161,6 +164,14 @@ export default function App() {
             element={
               <Suspense fallback={<AdminLoadingFallback />}>
                 <AdminItemsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="templates"
+            element={
+              <Suspense fallback={<AdminLoadingFallback />}>
+                <AdminTemplatesPage />
               </Suspense>
             }
           />

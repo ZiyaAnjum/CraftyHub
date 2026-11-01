@@ -256,17 +256,28 @@ export function OrdersPage() {
                       Quoted Price
                     </span>
                     <div className="mt-1">
-                      {order.quotedPrice !== null && order.quotedPrice !== undefined ? (
+                      {isVideo ? (
+                        order.quotedPrice !== null &&
+                        order.quotedPrice !== undefined &&
+                        Number(order.quotedPrice) > 0 ? (
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-serif font-bold text-stone-900 text-xl">
+                              ₹{Number(order.quotedPrice).toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-xs text-stone-400">INR</span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-stone-700 font-medium mt-0.5">
+                            Starting from ₹{Number(order.templateSnapshot?.basePrice ?? order.template?.basePrice ?? 0).toLocaleString('en-IN')} - final price confirmed by us
+                          </p>
+                        )
+                      ) : order.quotedPrice !== null && order.quotedPrice !== undefined ? (
                         <div className="flex items-baseline gap-1.5">
                           <span className="font-serif font-bold text-stone-900 text-xl">
                             ₹{Number(order.quotedPrice).toLocaleString('en-IN')}
                           </span>
                           <span className="text-xs text-stone-400">INR</span>
                         </div>
-                      ) : isVideo ? (
-                        <p className="text-xs text-stone-700 font-medium mt-0.5">
-                          Starting from ₹{Number(order.templateSnapshot?.basePrice || order.template?.basePrice || 0).toLocaleString('en-IN')} - final price confirmed by us
-                        </p>
                       ) : (
                         <p className="text-xs text-stone-600 font-medium italic mt-0.5">
                           Pending review by artisan
